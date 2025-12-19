@@ -1,12 +1,14 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import CustomSelect from '../components/ui/CustomSelect.tsx';
+import Toggle from '../components/ui/Toggle.tsx';
 import { createSten } from '../api/stenApi';
 
 const CreateSten: React.FC = () => {
   const navigate = useNavigate();
   const [stenText, setStenText] = useState('');
   const [password, setPassword] = useState('');
+  const [isPasswordProtected, setIsPasswordProtected] = useState(false);
   const [showValidationError, setShowValidationError] = useState(false);
   const [expiresAfter, setExpiresAfter] = useState('after-viewing');
   const [maxWinners, setMaxWinners] = useState('1');
@@ -32,7 +34,7 @@ const CreateSten: React.FC = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!stenText.trim() || !password.trim()) {
+    if (!stenText.trim() || (isPasswordProtected && !password.trim())) {
       setShowValidationError(true);
       return;
     }
@@ -63,7 +65,8 @@ const CreateSten: React.FC = () => {
 
       const stenData = {
         message: stenText.trim(),
-        password: password.trim(),
+        isPasswordProtected,
+        ...(isPasswordProtected && { password: password.trim() }),
         expiresAt: calculateExpiresAt(expiresAfter),
         maxWinners: maxWinners === 'unlimited' ? 999999 : parseInt(maxWinners)
       };
@@ -106,20 +109,33 @@ const CreateSten: React.FC = () => {
                 />
               </div>
 
-              {/* Password Input */}
-              <div>
-                <label className="block text-xs font-medium text-white/80 mb-2">
-                  Password
+              {/* Password Protection Toggle */}
+              <div className="flex items-center justify-between">
+                <label className="text-sm font-medium text-white">
+                  Password Protection
                 </label>
-                <input
-                  type="password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  className="w-full px-4 py-3 bg-[#0A0A0A] border border-[rgba(255,255,255,0.08)] rounded-xl text-white placeholder-white/40 focus:outline-none focus:border-[#7C3AED] focus:ring-1 focus:ring-[#7C3AED]"
-                  placeholder="Enter password to protect your Sten"
-                  required
+                <Toggle
+                  checked={isPasswordProtected}
+                  onChange={setIsPasswordProtected}
                 />
               </div>
+
+              {/* Password Input - Conditional */}
+              {isPasswordProtected && (
+                <div>
+                  <label className="block text-xs font-medium text-white/80 mb-2">
+                    Password
+                  </label>
+                  <input
+                    type="password"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    className="w-full px-4 py-3 bg-[#0A0A0A] border border-[rgba(255,255,255,0.08)] rounded-xl text-white placeholder-white/40 focus:outline-none focus:border-[#7C3AED] focus:ring-1 focus:ring-[#7C3AED]"
+                    placeholder="Enter password to protect your Sten"
+                    required={isPasswordProtected}
+                  />
+                </div>
+              )}
 
               {/* Validation Error */}
               <div className={`rounded-lg p-3 transition-opacity duration-200 ${
@@ -130,7 +146,12 @@ const CreateSten: React.FC = () => {
                 <p className={`text-red-400 text-sm ${
                   showValidationError ? 'block' : 'invisible'
                 }`}>
-                  Your Sten cannot be empty and must have a password. Please enter a message and password.
+                  {!stenText.trim() 
+                    ? 'Your Sten message cannot be empty. Please enter a message.'
+                    : isPasswordProtected && !password.trim()
+                    ? 'Password is required when protection is enabled. Please enter a password.'
+                    : 'Please enter a message to create your Sten.'
+                  }
                 </p>
               </div>
 

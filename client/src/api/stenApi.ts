@@ -5,7 +5,8 @@ const API_BASE_URL = '/api/sten';
 export interface StenData {
   id?: string;
   message: string;
-  password: string;
+  isPasswordProtected: boolean;
+  password?: string;
   expiresAt: Date;
   maxWinners: number;
 }
