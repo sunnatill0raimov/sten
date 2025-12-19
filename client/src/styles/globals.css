@@ -1,0 +1,42 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Dark theme by default */
+html {
+  background-color: #0A0A0A;
+  color: white;
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 0.5rem;
+}
+
+::-webkit-scrollbar-track {
+  background-color: rgb(31 41 55);
+}
+
+::-webkit-scrollbar-thumb {
+  background-color: rgb(75 85 99);
+  border-radius: 0.25rem;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background-color: rgb(107 114 128);
+}
+
+/* Purple glow effect */
+.purple-glow {
+  box-shadow: 0 0 20px rgba(124, 58, 237, 0.3), 0 0 40px rgba(124, 58, 237, 0.1);
+}
+
+/* Red glow for validation errors */
+.red-glow {
+  box-shadow: 0 0 15px rgba(239, 68, 68, 0.3);
+}
+
+/* Yellow glow for warnings */
+.yellow-glow {
+  box-shadow: 0 0 20px rgba(245, 158, 11, 0.3), 0 0 40px rgba(245, 158, 11, 0.1);
+}
