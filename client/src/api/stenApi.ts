@@ -1,6 +1,6 @@
 // API utility functions for STEN operations
 
-const API_BASE_URL = '/api/sten';
+const API_BASE_URL = 'http://localhost:3004/api/sten';
 
 export interface StenData {
   id?: string;
@@ -9,16 +9,22 @@ export interface StenData {
   password?: string;
   expiresAt: Date;
   maxWinners: number;
+  oneTime?: boolean;
 }
 
 export interface StenResponse {
   id: string;
-  text: string;
-  expiresAfter: string;
-  maxWinners: string;
-  oneTimeView: boolean;
-  createdAt: string;
-  status: 'active' | 'solved' | 'expired';
+  text?: string;
+  expiresAfter?: string;
+  maxWinners?: string;
+  oneTimeView?: boolean;
+  createdAt?: string;
+  status?: 'active' | 'solved' | 'expired';
+}
+
+export interface CreateStenResponse {
+  stenId: string;
+  publicUrl: string;
 }
 
 export interface SolveAttempt {
@@ -26,8 +32,8 @@ export interface SolveAttempt {
 }
 
 // Create a new STEN
-export const createSten = async (stenData: StenData): Promise<StenResponse> => {
-  const response = await fetch(API_BASE_URL, {
+export const createSten = async (stenData: StenData): Promise<CreateStenResponse> => {
+  const response = await fetch(`${API_BASE_URL}/create`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',

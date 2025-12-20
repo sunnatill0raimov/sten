@@ -57,7 +57,7 @@ const StenReady: React.FC = () => {
             <div className="flex items-start space-x-3">
               <div className="text-red-400 text-2xl">⚠️</div>
               <div>
-                <h3 className="text-red-400 font-bold mb-3 text-lg">⚠️ Lottery Rules</h3>
+                <h3 className="text-red-400 font-bold mb-3 text-lg">Lottery Rules</h3>
                 <p className="text-white/90 text-sm leading-relaxed">
                   Only ONE person can succeed!<br />
                   The first correct solve wins this Sten.<br />

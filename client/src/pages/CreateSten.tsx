@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import CustomSelect from '../components/ui/CustomSelect.tsx';
-import Toggle from '../components/ui/Toggle.tsx';
 import { createSten } from '../api/stenApi';
 
 const CreateSten: React.FC = () => {
@@ -68,11 +67,12 @@ const CreateSten: React.FC = () => {
         isPasswordProtected,
         ...(isPasswordProtected && { password: password.trim() }),
         expiresAt: calculateExpiresAt(expiresAfter),
-        maxWinners: maxWinners === 'unlimited' ? 999999 : parseInt(maxWinners)
+        maxWinners: maxWinners === 'unlimited' ? 999999 : parseInt(maxWinners),
+        oneTime: oneTimeView
       };
 
       const response = await createSten(stenData);
-      navigate(`/ready/${response.id}`);
+      navigate(`/ready/${response.stenId}`);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to create STEN');
     } finally {
@@ -109,33 +109,6 @@ const CreateSten: React.FC = () => {
                 />
               </div>
 
-              {/* Password Protection Toggle */}
-              <div className="flex items-center justify-between">
-                <label className="text-sm font-medium text-white">
-                  Password Protection
-                </label>
-                <Toggle
-                  checked={isPasswordProtected}
-                  onChange={setIsPasswordProtected}
-                />
-              </div>
-
-              {/* Password Input - Conditional */}
-              {isPasswordProtected && (
-                <div>
-                  <label className="block text-xs font-medium text-white/80 mb-2">
-                    Password
-                  </label>
-                  <input
-                    type="password"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    className="w-full px-4 py-3 bg-[#0A0A0A] border border-[rgba(255,255,255,0.08)] rounded-xl text-white placeholder-white/40 focus:outline-none focus:border-[#7C3AED] focus:ring-1 focus:ring-[#7C3AED]"
-                    placeholder="Enter password to protect your Sten"
-                    required={isPasswordProtected}
-                  />
-                </div>
-              )}
 
               {/* Validation Error */}
               <div className={`rounded-lg p-3 transition-opacity duration-200 ${
@@ -210,6 +183,43 @@ const CreateSten: React.FC = () => {
                   />
                 </button>
               </div>
+
+              {/* Password Protection Toggle */}
+              <div className="flex items-center justify-between !mt-2">
+                <label className="text-sm font-medium text-white">
+                  Password Protection
+                </label>
+                <button
+                  type="button"
+                  onClick={() => setIsPasswordProtected(!isPasswordProtected)}
+                  className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                    isPasswordProtected ? 'bg-[#7C3AED]' : 'bg-white/20'
+                  }`}
+                >
+                  <span
+                    className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                      isPasswordProtected ? 'translate-x-6' : 'translate-x-1'
+                    }`}
+                  />
+                </button>
+              </div>
+
+              {/* Password Input - Conditional */}
+              {isPasswordProtected && (
+                <div>
+                  <label className="block text-xs font-medium text-white/80 mb-2">
+                    Password
+                  </label>
+                  <input
+                    type="password"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    className="w-full px-4 py-3 bg-[#0A0A0A] border border-[rgba(255,255,255,0.08)] rounded-xl text-white placeholder-white/40 focus:outline-none focus:border-[#7C3AED] focus:ring-1 focus:ring-[#7C3AED]"
+                    placeholder="Enter password to protect your Sten"
+                    required={isPasswordProtected}
+                  />
+                </div>
+              )}
 
               {/* Challenge Rules Section */}
               <div className="border-t border-white/10 my-6"></div>

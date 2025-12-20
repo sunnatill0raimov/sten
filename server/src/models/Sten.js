@@ -1,24 +1,35 @@
 import mongoose from 'mongoose';
 
 const stenSchema = new mongoose.Schema({
-  // Core encryption fields
+  // Content storage - either plain or encrypted
+  content: {
+    type: String,
+    required: function() { return !this.isPasswordProtected; }
+  },
   encryptedMessage: {
     type: String,
-    required: true,
+    required: function() { return this.isPasswordProtected; }
   },
   iv: {
     type: String,
-    required: true,
+    required: function() { return this.isPasswordProtected; }
   },
   
-  // Password security fields
+  // Password protection flag
+  isPasswordProtected: {
+    type: Boolean,
+    required: true,
+    default: false
+  },
+  
+  // Password security fields (conditional)
   passwordHash: {
     type: String,
-    required: true,
+    required: function() { return this.isPasswordProtected; }
   },
   passwordSalt: {
     type: String,
-    required: true,
+    required: function() { return this.isPasswordProtected; }
   },
   
   // STEN configuration
@@ -64,7 +75,7 @@ const stenSchema = new mongoose.Schema({
   },
   passwordStrength: {
     type: String,
-    enum: ['weak', 'medium', 'strong', 'very-strong'],
+    enum: ['none', 'weak', 'medium', 'strong', 'very-strong'],
     default: 'medium'
   }
 });
