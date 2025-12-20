@@ -4,12 +4,14 @@ import stenRoutes from './routes/sten.routes.js';
 
 const app = express();
 
-// CORS middleware - more permissive for development
+// CORS middleware - allows both local development and production
 app.use(cors({
   origin: [
     process.env.FRONTEND_URL || 'http://localhost:5173',
+    'https://sten-llsp.onrender.com',
     'http://localhost:5173',
     'http://localhost:3000',
+    'http://localhost:3004',
     'http://127.0.0.1:5173',
     'http://127.0.0.1:3000'
   ],
