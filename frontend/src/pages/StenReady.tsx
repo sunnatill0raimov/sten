@@ -7,8 +7,9 @@ const StenReady: React.FC = () => {
   const [copiedChallenge, setCopiedChallenge] = useState(false);
   const [copiedKey, setCopiedKey] = useState(false);
 
-  const shareUrl = `${window.location.origin}/view/${id}`;
-  const challengeUrl = `${window.location.origin}/view/${id}?challenge=true`;
+  // Updated URLs to work with HashRouter
+  const shareUrl = `${window.location.origin}/#/view/${id}`;
+  const challengeUrl = `${window.location.origin}/#/view/${id}?challenge=true`;
   const decryptionKey = id || 'STEN-KEY-EXAMPLE';
 
   const handleCopyPrimary = async () => {
