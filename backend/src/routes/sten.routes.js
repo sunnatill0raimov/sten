@@ -6,7 +6,10 @@ const router = express.Router()
 // GET /api/sten
 router.get('/', stenController.getAll)
 
-// POST /api/sten/create (must be before /:id routes)
+// POST /api/sten (main endpoint for creating stens)
+router.post('/', stenController.createSten)
+
+// POST /api/sten/create (legacy endpoint - must be before /:id routes)
 router.post('/create', stenController.createSten)
 
 // SPECIFIC routes with /:id MUST come BEFORE generic /:id route
