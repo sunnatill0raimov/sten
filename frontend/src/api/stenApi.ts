@@ -54,122 +54,321 @@ export interface StenContent {
   solved?: boolean;
 }
 
+export interface ApiError {
+  message: string;
+  code?: string;
+  success?: boolean;
+}
+
+// Enhanced error handling with specific error types
+export class StenApiError extends Error {
+  public code?: string;
+  public statusCode?: number;
+
+  constructor(message: string, code?: string, statusCode?: number) {
+    super(message);
+    this.name = 'StenApiError';
+    this.code = code;
+    this.statusCode = statusCode;
+  }
+}
+
 // Create a new STEN
 export const createSten = async (stenData: StenData): Promise<CreateStenResponse> => {
-  const response = await fetch(`${API_BASE_URL}/create`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify(stenData),
-  });
+  try {
+    const response = await fetch(`${API_BASE_URL}/create`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(stenData),
+    });
 
-  if (!response.ok) {
-    const error = await response.json();
-    throw new Error(error.message || 'Failed to create STEN');
+    if (!response.ok) {
+      const error: ApiError = await response.json();
+      throw new StenApiError(
+        error.message || 'Failed to create STEN',
+        error.code,
+        response.status
+      );
+    }
+
+    return response.json();
+  } catch (error) {
+    if (error instanceof StenApiError) {
+      throw error;
+    }
+    throw new StenApiError('Network error: Failed to connect to server');
   }
-
-  return response.json();
 };
 
 // NEW: Get STEN metadata (no content)
 export const getStenMetadata = async (id: string): Promise<StenMetadata> => {
-  const response = await fetch(`${API_BASE_URL}/${id}/metadata`);
+  try {
+    const response = await fetch(`${API_BASE_URL}/${id}/metadata`);
 
-  if (!response.ok) {
-    const error = await response.json();
-    throw new Error(error.message || 'Failed to fetch STEN metadata');
+    if (!response.ok) {
+      const error: ApiError = await response.json();
+      
+      // Handle different error scenarios
+      if (response.status === 404) {
+        throw new StenApiError(
+          'STEN not found. It may have been deleted or the link is incorrect.',
+          'STEN_NOT_FOUND',
+          response.status
+        );
+      } else if (response.status === 410) {
+        throw new StenApiError(
+          'This STEN has expired and is no longer available.',
+          'STEN_EXPIRED',
+          response.status
+        );
+      }
+      
+      throw new StenApiError(
+        error.message || 'Failed to fetch STEN metadata',
+        error.code,
+        response.status
+      );
+    }
+
+    return response.json();
+  } catch (error) {
+    if (error instanceof StenApiError) {
+      throw error;
+    }
+    throw new StenApiError('Network error: Failed to connect to server');
   }
-
-  return response.json();
 };
 
 // NEW: Unlock password-protected STEN
 export const unlockSten = async (id: string, password: string): Promise<StenContent> => {
-  const response = await fetch(`${API_BASE_URL}/${id}/unlock`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({ password }),
-  });
+  try {
+    const response = await fetch(`${API_BASE_URL}/${id}/unlock`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ password }),
+    });
 
-  if (!response.ok) {
-    const error = await response.json();
-    throw new Error(error.message || 'Failed to unlock STEN');
+    if (!response.ok) {
+      const error: ApiError = await response.json();
+      
+      // Handle specific error codes
+      switch (error.code) {
+        case 'STEN_NOT_FOUND':
+          throw new StenApiError(
+            'STEN not found. It may have been deleted or the link is incorrect.',
+            error.code,
+            response.status
+          );
+        case 'STEN_EXPIRED':
+          throw new StenApiError(
+            'This STEN has expired and is no longer available.',
+            error.code,
+            response.status
+          );
+        case 'STEN_ALREADY_VIEWED':
+          throw new StenApiError(
+            'This STEN has already been viewed and is no longer available.',
+            error.code,
+            response.status
+          );
+        case 'WINNERS_LIMIT_REACHED':
+          throw new StenApiError(
+            'The maximum number of views for this STEN has been reached.',
+            error.code,
+            response.status
+          );
+        case 'PASSWORD_REQUIRED':
+          throw new StenApiError(
+            'Password is required to view this STEN.',
+            error.code,
+            response.status
+          );
+        case 'INVALID_PASSWORD':
+          throw new StenApiError(
+            'Incorrect password. Please try again.',
+            error.code,
+            response.status
+          );
+        default:
+          throw new StenApiError(
+            error.message || 'Failed to unlock STEN',
+            error.code,
+            response.status
+          );
+      }
+    }
+
+    return response.json();
+  } catch (error) {
+    if (error instanceof StenApiError) {
+      throw error;
+    }
+    throw new StenApiError('Network error: Failed to connect to server');
   }
-
-  return response.json();
 };
 
 // NEW: View unprotected STEN
 export const viewSten = async (id: string): Promise<StenContent> => {
-  const response = await fetch(`${API_BASE_URL}/${id}/view`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({}),
-  });
+  try {
+    const response = await fetch(`${API_BASE_URL}/${id}/view`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({}),
+    });
 
-  if (!response.ok) {
-    const error = await response.json();
-    throw new Error(error.message || 'Failed to view STEN');
+    if (!response.ok) {
+      const error: ApiError = await response.json();
+      
+      // Handle specific error codes
+      switch (error.code) {
+        case 'STEN_NOT_FOUND':
+          throw new StenApiError(
+            'STEN not found. It may have been deleted or the link is incorrect.',
+            error.code,
+            response.status
+          );
+        case 'STEN_EXPIRED':
+          throw new StenApiError(
+            'This STEN has expired and is no longer available.',
+            error.code,
+            response.status
+          );
+        case 'STEN_ALREADY_VIEWED':
+          throw new StenApiError(
+            'This STEN has already been viewed and is no longer available.',
+            error.code,
+            response.status
+          );
+        case 'WINNERS_LIMIT_REACHED':
+          throw new StenApiError(
+            'The maximum number of views for this STEN has been reached.',
+            error.code,
+            response.status
+          );
+        case 'PASSWORD_REQUIRED':
+          throw new StenApiError(
+            'This STEN requires a password to view.',
+            error.code,
+            response.status
+          );
+        default:
+          throw new StenApiError(
+            error.message || 'Failed to view STEN',
+            error.code,
+            response.status
+          );
+      }
+    }
+
+    return response.json();
+  } catch (error) {
+    if (error instanceof StenApiError) {
+      throw error;
+    }
+    throw new StenApiError('Network error: Failed to connect to server');
   }
-
-  return response.json();
 };
 
 // Legacy: Get STEN by ID
 export const getSten = async (id: string): Promise<StenResponse> => {
-  const response = await fetch(`${API_BASE_URL}/${id}`);
+  try {
+    const response = await fetch(`${API_BASE_URL}/${id}`);
 
-  if (!response.ok) {
-    const error = await response.json();
-    throw new Error(error.message || 'Failed to fetch STEN');
+    if (!response.ok) {
+      const error: ApiError = await response.json();
+      throw new StenApiError(
+        error.message || 'Failed to fetch STEN',
+        error.code,
+        response.status
+      );
+    }
+
+    return response.json();
+  } catch (error) {
+    if (error instanceof StenApiError) {
+      throw error;
+    }
+    throw new StenApiError('Network error: Failed to connect to server');
   }
-
-  return response.json();
 };
 
 // Legacy: Get STEN status
 export const getStenStatus = async (id: string): Promise<{ status: string }> => {
-  const response = await fetch(`${API_BASE_URL}/${id}/status`);
+  try {
+    const response = await fetch(`${API_BASE_URL}/${id}/status`);
 
-  if (!response.ok) {
-    const error = await response.json();
-    throw new Error(error.message || 'Failed to fetch STEN status');
+    if (!response.ok) {
+      const error: ApiError = await response.json();
+      throw new StenApiError(
+        error.message || 'Failed to fetch STEN status',
+        error.code,
+        response.status
+      );
+    }
+
+    return response.json();
+  } catch (error) {
+    if (error instanceof StenApiError) {
+      throw error;
+    }
+    throw new StenApiError('Network error: Failed to connect to server');
   }
-
-  return response.json();
 };
 
 // Legacy: Solve a STEN
 export const solveSten = async (id: string, attempt: SolveAttempt): Promise<{ success: boolean; message?: string }> => {
-  const response = await fetch(`${API_BASE_URL}/${id}/solve`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify(attempt),
-  });
+  try {
+    const response = await fetch(`${API_BASE_URL}/${id}/solve`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(attempt),
+    });
 
-  if (!response.ok) {
-    const error = await response.json();
-    throw new Error(error.message || 'Failed to solve STEN');
+    if (!response.ok) {
+      const error: ApiError = await response.json();
+      throw new StenApiError(
+        error.message || 'Failed to solve STEN',
+        error.code,
+        response.status
+      );
+    }
+
+    return response.json();
+  } catch (error) {
+    if (error instanceof StenApiError) {
+      throw error;
+    }
+    throw new StenApiError('Network error: Failed to connect to server');
   }
-
-  return response.json();
 };
 
 // Legacy: Get all STENs
 export const getAllStens = async (): Promise<StenResponse[]> => {
-  const response = await fetch(API_BASE_URL);
+  try {
+    const response = await fetch(API_BASE_URL);
 
-  if (!response.ok) {
-    const error = await response.json();
-    throw new Error(error.message || 'Failed to fetch STENs');
+    if (!response.ok) {
+      const error: ApiError = await response.json();
+      throw new StenApiError(
+        error.message || 'Failed to fetch STENs',
+        error.code,
+        response.status
+      );
+    }
+
+    return response.json();
+  } catch (error) {
+    if (error instanceof StenApiError) {
+      throw error;
+    }
+    throw new StenApiError('Network error: Failed to connect to server');
   }
-
-  return response.json();
 };
