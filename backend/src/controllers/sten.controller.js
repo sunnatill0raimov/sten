@@ -250,6 +250,9 @@ export const viewSten = async (req, res) => {
 
 export const createSten = async (req, res) => {
 	try {
+		// Log incoming request for debugging
+		console.log('📥 [CREATE STEN] Incoming request body:', JSON.stringify(req.body, null, 2))
+		
 		const {
 			message,
 			isPasswordProtected,
@@ -260,12 +263,14 @@ export const createSten = async (req, res) => {
 		} = req.body
 
 		if (!message || typeof message !== 'string') {
+			console.log('❌ [CREATE STEN] Validation failed: message missing or not string')
 			return res
 				.status(400)
 				.json({ error: 'Message is required and must be a string' })
 		}
 
 		if (typeof isPasswordProtected !== 'boolean') {
+			console.log('❌ [CREATE STEN] Validation failed: isPasswordProtected not boolean')
 			return res
 				.status(400)
 				.json({ error: 'isPasswordProtected must be a boolean' })
@@ -273,18 +278,21 @@ export const createSten = async (req, res) => {
 
 		if (isPasswordProtected) {
 			if (!password || typeof password !== 'string') {
+				console.log('❌ [CREATE STEN] Validation failed: password required but missing')
 				return res
 					.status(400)
 					.json({ error: 'Password is required when protection is enabled' })
 			}
 
 			if (password.length < 8) {
+				console.log('❌ [CREATE STEN] Validation failed: password too short')
 				return res
 					.status(400)
 					.json({ error: 'Password must be at least 8 characters long' })
 			}
 		} else {
 			if (password && typeof password === 'string' && password.trim() !== '') {
+				console.log('❌ [CREATE STEN] Validation failed: password provided when not protected')
 				return res.status(400).json({
 					error: 'Password should not be provided when protection is disabled',
 				})
@@ -295,6 +303,8 @@ export const createSten = async (req, res) => {
 		const now = new Date()
 		let expiresAt = null
 		let expiresIn = req.body.expiresIn || '24_hours'
+
+		console.log('⏰ [CREATE STEN] Processing expiration:', { expiresIn, oneTime })
 
 		switch (expiresIn) {
 			case 'after_viewing':
@@ -314,6 +324,7 @@ export const createSten = async (req, res) => {
 				expiresAt = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000)
 				break
 			default:
+				console.log('❌ [CREATE STEN] Validation failed: invalid expiration type:', expiresIn)
 				return res.status(400).json({ error: 'Invalid expiration type' })
 		}
 
@@ -324,12 +335,14 @@ export const createSten = async (req, res) => {
 		}
 
 		if (maxWinners !== null && (typeof maxWinners !== 'number' || maxWinners < 1)) {
+			console.log('❌ [CREATE STEN] Validation failed: invalid maxWinners:', maxWinners)
 			return res
 				.status(400)
 				.json({ error: 'Max winners must be null (unlimited) or a positive number' })
 		}
 
 		if (oneTime && maxWinners !== null && maxWinners > 1) {
+			console.log('❌ [CREATE STEN] Validation failed: oneTime with maxWinners > 1')
 			return res
 				.status(400)
 				.json({ error: 'One-time STENs can only have 1 winner' })
@@ -344,6 +357,7 @@ export const createSten = async (req, res) => {
 		}
 
 		if (isPasswordProtected) {
+			console.log('🔐 [CREATE STEN] Creating password-protected STEN')
 			// Use password-based encryption to match the unlock method
 			const encryptedMessage = Encryption.encryptMessageWithPassword(
 				message,
@@ -359,14 +373,30 @@ export const createSten = async (req, res) => {
 				Crypto.assessPasswordStrength(password).strength
 			stenData.securityLevel = 'medium'
 		} else {
+			console.log('📄 [CREATE STEN] Creating unprotected STEN')
 			// For unprotected STENs, store as plain text
 			stenData.content = message
 			stenData.securityLevel = 'low'
 			stenData.passwordStrength = 'none'
 		}
 
+		console.log('📦 [CREATE STEN] Data to save:', JSON.stringify({
+			...stenData,
+			encryptedMessage: stenData.encryptedMessage ? '[ENCRYPTED]' : undefined,
+			passwordHash: stenData.passwordHash ? '[HASH]' : undefined,
+			content: stenData.content ? `[${stenData.content.length} chars]` : undefined
+		}, null, 2))
+
 		const sten = new Sten(stenData)
+		
+		console.log('💾 [CREATE STEN] Attempting to save to MongoDB...')
 		const savedSten = await sten.save()
+		
+		console.log('✅ [CREATE STEN] STEN saved successfully!')
+		console.log('   ID:', savedSten._id)
+		console.log('   Collection:', Sten.collection.name)
+		console.log('   ExpiresAt:', savedSten.expiresAt)
+		console.log('   OneTime:', savedSten.oneTime)
 
 		const baseUrl = process.env.BASE_URL || 'http://localhost:5173'
 		const publicUrl = `${baseUrl}/solve/${savedSten._id}`
@@ -376,8 +406,24 @@ export const createSten = async (req, res) => {
 			publicUrl: publicUrl,
 		})
 	} catch (error) {
-		console.error('STEN creation error:', error.message)
-		res.status(500).json({ error: 'Failed to create STEN' })
+		console.error('❌ [CREATE STEN] Error creating STEN:')
+		console.error('   Message:', error.message)
+		console.error('   Name:', error.name)
+		console.error('   Stack:', error.stack)
+		
+		// Log validation errors if present
+		if (error.errors) {
+			console.error('   Validation Errors:')
+			Object.keys(error.errors).forEach(field => {
+				console.error(`     - ${field}: ${error.errors[field].message}`)
+			})
+		}
+		
+		// Return more detailed error in development
+		res.status(500).json({ 
+			error: 'Failed to create STEN',
+			details: process.env.NODE_ENV !== 'production' ? error.message : undefined
+		})
 	}
 }
 
