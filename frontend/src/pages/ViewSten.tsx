@@ -2,7 +2,6 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { getStenMetadata, viewSten, unlockSten } from '../api/stenApi';
 import type { StenMetadata, StenContent } from '../api/stenApi';
-import { ERROR_CODES, ERROR_MESSAGES, getErrorMessage } from '../constants/errorMessages';
 
 type StenState = 
   | 'loading'
@@ -39,7 +38,6 @@ const ViewSten: React.FC = () => {
   const [passwordError, setPasswordError] = useState<string>('');
   const [isUnlocking, setIsUnlocking] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const [needsPasswordUnlock, setNeedsPasswordUnlock] = useState(false);
 
   // Calculate time remaining until expiration
   const calculateTimeRemaining = (expirationTime: string): TimeRemaining => {
@@ -65,24 +63,26 @@ const ViewSten: React.FC = () => {
     return { days, hours, minutes, seconds, isExpired: false };
   };
 
-  // Format time remaining for display (compact countdown format)
+  // Format time remaining for display
   const formatTimeRemaining = (time: TimeRemaining): string => {
     if (time.isExpired) return 'Expired';
 
-    const pad = (n: number) => n.toString().padStart(2, '0');
+    const parts: string[] = [];
     
-    // If more than 1 day, show days + hours
     if (time.days > 0) {
-      return `${time.days}d ${pad(time.hours)}:${pad(time.minutes)}:${pad(time.seconds)}`;
+      parts.push(`${time.days} day${time.days > 1 ? 's' : ''}`);
     }
-    
-    // If more than 1 hour, show HH:MM:SS
     if (time.hours > 0) {
-      return `${pad(time.hours)}:${pad(time.minutes)}:${pad(time.seconds)}`;
+      parts.push(`${time.hours} hour${time.hours > 1 ? 's' : ''}`);
     }
-    
-    // Less than 1 hour, show MM:SS
-    return `${pad(time.minutes)}:${pad(time.seconds)}`;
+    if (time.minutes > 0) {
+      parts.push(`${time.minutes} minute${time.minutes > 1 ? 's' : ''}`);
+    }
+    if (time.seconds > 0 && parts.length === 0) {
+      parts.push(`${time.seconds} second${time.seconds > 1 ? 's' : ''}`);
+    }
+
+    return parts.length > 0 ? `Expires in ${parts.join(' ')}` : 'Expires in less than a second';
   };
 
   // Update countdown every second
@@ -143,38 +143,12 @@ const ViewSten: React.FC = () => {
     if (!id) return;
 
     setIsLoading(true);
-    setPasswordError('');
     try {
       const result = await viewSten(id);
       setContent(result.content);
       setViewInfo(result);
-    } catch (err: unknown) {
+    } catch (err) {
       console.error('Failed to view STEN:', err);
-      const error = err as { code?: string; message?: string; statusCode?: number };
-      
-      // Handle password-required response - switch to password mode
-      if (error.code === ERROR_CODES.PASSWORD_REQUIRED) {
-        setNeedsPasswordUnlock(true);
-        return;
-      }
-      
-      // Handle other specific errors using centralized messages
-      switch (error.code) {
-        case ERROR_CODES.STEN_EXPIRED:
-          setStenState('expired');
-          break;
-        case ERROR_CODES.STEN_NOT_FOUND:
-          setStenState('not_found');
-          break;
-        case ERROR_CODES.STEN_ALREADY_VIEWED:
-          setStenState('destroyed');
-          break;
-        case ERROR_CODES.WINNERS_LIMIT_REACHED:
-          setPasswordError(ERROR_MESSAGES[ERROR_CODES.WINNERS_LIMIT_REACHED]);
-          break;
-        default:
-          setPasswordError(getErrorMessage(error.code, error.statusCode));
-      }
     } finally {
       setIsLoading(false);
     }
@@ -194,10 +168,12 @@ const ViewSten: React.FC = () => {
       setPassword(''); // Clear password after successful unlock
     } catch (err: unknown) {
       console.error('Failed to unlock STEN:', err);
-      const error = err as { code?: string; message?: string; statusCode?: number };
-      
-      // Use centralized error messages
-      setPasswordError(getErrorMessage(error.code, error.statusCode));
+      const error = err as { code?: string; message?: string };
+      if (error.code === 'INVALID_PASSWORD') {
+        setPasswordError('Incorrect password. Please try again.');
+      } else {
+        setPasswordError(error.message || 'Failed to unlock STEN');
+      }
     } finally {
       setIsUnlocking(false);
     }
@@ -355,7 +331,7 @@ const ViewSten: React.FC = () => {
   // Active State
   if (stenState === 'active') {
     const isLowTime = timeRemaining.minutes < 10 && !timeRemaining.isExpired;
-    const isPasswordProtected = metadata?.requiresPassword || metadata?.passwordProtected || needsPasswordUnlock;
+    const isPasswordProtected = metadata?.requiresPassword || metadata?.isPasswordProtected;
     
     return (
       <div className="flex items-center justify-center min-h-screen px-6 py-8">
@@ -372,21 +348,18 @@ const ViewSten: React.FC = () => {
                     ? 'bg-red-500/20 border border-red-500/30' 
                     : 'bg-[#0A0A0A] border border-[rgba(255,255,255,0.08)]'
                 }`}>
-                  {!timeRemaining.isExpired ? (
-                    <>
-                      <p className={`text-sm font-medium mb-2 ${
-                        isLowTime ? 'text-red-400' : 'text-white/70'
-                      }`}>
-                        Expires in:
-                      </p>
-                      <p className={`text-3xl font-mono font-bold tracking-wider ${
-                        isLowTime ? 'text-red-400' : 'text-white'
-                      }`}>
-                        {formatTimeRemaining(timeRemaining)}
-                      </p>
-                    </>
-                  ) : (
-                    <p className="text-red-400 text-lg font-semibold">This STEN has expired</p>
+                  <p className={`text-sm font-medium mb-1 ${
+                    isLowTime ? 'text-red-400' : 'text-white/70'
+                  }`}>
+                    Expiration Status
+                  </p>
+                  <p className={`text-lg font-semibold ${
+                    isLowTime ? 'text-red-400' : 'text-white'
+                  }`}>
+                    {formatTimeRemaining(timeRemaining)}
+                  </p>
+                  {timeRemaining.isExpired && (
+                    <p className="text-red-400 text-sm mt-2">This STEN has expired</p>
                   )}
                 </div>
               )}

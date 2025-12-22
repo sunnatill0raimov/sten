@@ -1,6 +1,14 @@
 import mongoose from 'mongoose';
 
 const stenSchema = new mongoose.Schema({
+  // Optional title for the Sten
+  title: {
+    type: String,
+    required: false,
+    trim: true,
+    maxlength: 200
+  },
+
   // Content storage - either plain or encrypted
   content: {
     type: String,
@@ -32,57 +40,44 @@ const stenSchema = new mongoose.Schema({
     required: function() { return this.isPasswordProtected; }
   },
   
-  // STEN configuration - null means unlimited winners
-  maxWinners: {
+  // STEN configuration - null means unlimited views
+  maxViews: {
     type: Number,
-    required: false, // Make it optional to support null
+    required: false, // Make it optional to support null (unlimited)
     min: 1,
     default: 1,
     validate: {
       validator: function(v) {
         return v === null || (typeof v === 'number' && v >= 1);
       },
-      message: 'maxWinners must be null (unlimited) or a number >= 1'
+      message: 'maxViews must be null (unlimited) or a number >= 1'
     }
   },
-  currentWinners: {
+  currentViews: {
     type: Number,
     default: 0,
     min: 0,
   },
-  oneTime: {
-    type: Boolean,
-    default: false,
-  },
   
-  // New: Expiration type
+  // Expiration type
   expiresIn: {
     type: String,
     required: true,
-    enum: ['after_viewing', '1_hour', '24_hours', '7_days', '30_days'],
+    enum: ['1_hour', '24_hours', '7_days', '30_days'],
     default: '24_hours'
   },
   
-  // Timing fields - expiresAt can be null for after_viewing
+  // Timing fields - expiresAt is calculated from expiresIn, not required in input
   expiresAt: {
     type: Date,
-    required: function() { return this.expiresIn !== 'after_viewing'; }
+    required: false // Will be calculated by pre-save middleware
   },
   createdAt: {
     type: Date,
     default: Date.now,
   },
   
-  // Status tracking
-  solved: {
-    type: Boolean,
-    default: false,
-  },
-  solvedBy: [{
-    type: String, // Array of user IDs
-  }],
-  
-  // Optional security metadata
+  // Security metadata
   securityLevel: {
     type: String,
     enum: ['low', 'medium', 'high'],
@@ -95,68 +90,48 @@ const stenSchema = new mongoose.Schema({
   }
 });
 
-// Pre-save middleware to automatically set solved to true when currentWinners reaches maxWinners
-// Only applies if maxWinners is not null (unlimited)
+// Pre-save middleware to handle expiration logic
 stenSchema.pre('save', function(next) {
-  if (this.maxWinners && this.currentWinners >= this.maxWinners && !this.solved) {
-    this.solved = true;
-  }
-  next();
-});
-
-// Pre-save middleware for one-time STENs
-stenSchema.pre('save', function(next) {
-  // If this is a one-time STEN and someone has solved it, mark as solved
-  if (this.oneTime && this.currentWinners >= 1 && !this.solved) {
-    this.solved = true;
-  }
-  next();
-});
-
-// Validation to ensure maxWinners is 1 for one-time STENs
-stenSchema.pre('validate', function(next) {
-  if (this.oneTime && this.maxWinners > 1) {
-    this.maxWinners = 1;
-  }
-  next();
-});
-
-// New: Handle expiration type logic
-stenSchema.pre('save', function(next) {
-  // For after_viewing, expiresAt should be null
-  if (this.expiresIn === 'after_viewing') {
-    this.expiresAt = null;
-  }
-  
-  // For one-time STENs, force expiration to after_viewing
-  if (this.oneTime && this.expiresIn !== 'after_viewing') {
-    this.expiresIn = 'after_viewing';
-    this.expiresAt = null;
+  // Calculate expiresAt based on expiresIn type if not already set
+  if (!this.expiresAt || this.isModified('expiresIn')) {
+    const now = new Date();
+    
+    switch (this.expiresIn) {
+      case '1_hour':
+        this.expiresAt = new Date(now.getTime() + 60 * 60 * 1000);
+        break;
+      case '24_hours':
+        this.expiresAt = new Date(now.getTime() + 24 * 60 * 60 * 1000);
+        break;
+      case '7_days':
+        this.expiresAt = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
+        break;
+      case '30_days':
+        this.expiresAt = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
+        break;
+      default:
+        // Default to 24 hours if invalid type
+        this.expiresIn = '24_hours';
+        this.expiresAt = new Date(now.getTime() + 24 * 60 * 60 * 1000);
+    }
   }
   
   next();
 });
 
 // Indexes for performance optimization
-// TTL index for automatic cleanup of expired documents (only for documents with expiresAt)
+// TTL index for automatic cleanup of expired documents
 stenSchema.index({ expiresAt: 1 }, { 
-  expireAfterSeconds: 0,
-  partialFilterExpression: { expiresAt: { $ne: null } }
+  expireAfterSeconds: 0
 });
 
-// Compound index for finding active STENs with available winner slots
-stenSchema.index({ solved: 1, currentWinners: 1 });
-
-// Index for expiration type queries
-stenSchema.index({ expiresIn: 1 });
+// Index for view limit checking
+stenSchema.index({ currentViews: 1, maxViews: 1 });
 
 // Index for chronological ordering
 stenSchema.index({ createdAt: -1 });
 
-// Index for one-time STEN queries
-stenSchema.index({ oneTime: 1, solved: 1 });
-
-// Index for winner limit checking
-stenSchema.index({ currentWinners: 1, maxWinners: 1 });
+// Index for password protection queries
+stenSchema.index({ isPasswordProtected: 1 });
 
 export default mongoose.model('Sten', stenSchema);

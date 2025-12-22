@@ -1,167 +1,156 @@
-import React, { useState } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import React, { useState} from 'react';
+import { useParams, Link, useLocation } from 'react-router-dom';
 
 const StenReady: React.FC = () => {
   const { id } = useParams<{ id: string }>();
-  const [copiedPrimary, setCopiedPrimary] = useState(false);
-  const [copiedChallenge, setCopiedChallenge] = useState(false);
-  const [copiedKey, setCopiedKey] = useState(false);
+  const location = useLocation();
+  const [copiedLink, setCopiedLink] = useState(false);
+  const [copiedPassword, setCopiedPassword] = useState(false);
+
+  // Get data passed from CreateSten component
+  const { isPasswordProtected, password: stenPassword } = location.state || {
+    isPasswordProtected: false,
+    password: null
+  };
 
   // Updated URLs to work with HashRouter
-  const shareUrl = `${window.location.origin}/#/view/${id}`;
-  const challengeUrl = `${window.location.origin}/#/view/${id}?challenge=true`;
-  const decryptionKey = id || 'STEN-KEY-EXAMPLE';
+  const shareUrl = `${window.location.origin}/#/solve/${id}`;
 
-  const handleCopyPrimary = async () => {
+  const handleCopyLink = async () => {
     try {
       await navigator.clipboard.writeText(shareUrl);
-      setCopiedPrimary(true);
-      setTimeout(() => setCopiedPrimary(false), 2000);
+      setCopiedLink(true);
+      setTimeout(() => setCopiedLink(false), 2000);
     } catch (err) {
       console.error('Failed to copy:', err);
     }
   };
 
-  const handleCopyChallenge = async () => {
-    try {
-      await navigator.clipboard.writeText(challengeUrl);
-      setCopiedChallenge(true);
-      setTimeout(() => setCopiedChallenge(false), 2000);
-    } catch (err) {
-      console.error('Failed to copy:', err);
-    }
-  };
-
-  const handleCopyKey = async () => {
-    try {
-      await navigator.clipboard.writeText(decryptionKey);
-      setCopiedKey(true);
-      setTimeout(() => setCopiedKey(false), 2000);
-    } catch (err) {
-      console.error('Failed to copy:', err);
+  const handleCopyPassword = async () => {
+    if (stenPassword) {
+      try {
+        await navigator.clipboard.writeText(stenPassword);
+        setCopiedPassword(true);
+        setTimeout(() => setCopiedPassword(false), 2000);
+      } catch (err) {
+        console.error('Failed to copy password:', err);
+      }
     }
   };
 
   return (
-    <div className="min-h-screen bg-black text-white">
-      {/* Header */}
-      <div className="px-6 pt-4 pb-8">
-        <div className="max-w-[480px] mx-auto">
-          {/* 1) Title + subtitle */}
-          <div className="text-left mb-8">
-            <h1 className="text-3xl font-bold text-white mb-2">Your Sten is ready</h1>
-            <p className="text-gray-400 text-base">Only one person can unlock it.</p>
+    <div className="min-h-screen bg-black text-white p-4 md:p-8">
+      {/* Main Container */}
+      <div className="max-w-4xl mx-auto">
+        <div className="bg-black border border-white/30 rounded-xl p-6 md:p-8 shadow-2xl">
+          
+          {/* Page Header */}
+          <div className="text-center mb-8">
+            <h1 className="text-3xl md:text-4xl font-bold text-white mb-3">
+              Your Sten is Ready
+            </h1>
+            <p className="text-gray-400 text-base md:text-lg">
+              Share this link securely. It will self-destruct based on your settings.
+            </p>
           </div>
 
-          {/* 2) Lottery rules warning card */}
-          <div className="bg-gradient-to-r from-red-900/20 to-black/30 border border-red-500/30 rounded-xl p-5 mb-6 red-glow">
-            <div className="flex items-start space-x-3">
-              <div className="text-red-400 text-2xl">⚠️</div>
-              <div>
-                <h3 className="text-red-400 font-bold mb-3 text-lg">Lottery Rules</h3>
-                <p className="text-white/90 text-sm leading-relaxed">
-                  Only ONE person can succeed!<br />
-                  The first correct solve wins this Sten.<br />
-                  All others will find it locked forever. 🎁
-                </p>
+          {/* Single Sten Link Section */}
+          <div className="bg-gray-900/50 border border-white/10 rounded-xl p-5 md:p-6 mb-6">
+            <h3 className="text-white font-semibold mb-3 text-lg">Share Link</h3>
+            
+            {/* Desktop Layout */}
+            <div className="hidden md:flex items-center space-x-3">
+              <div className="flex-1 bg-black/50 border border-white/10 rounded-lg px-4 py-3">
+                <span className="text-white/90 font-mono text-sm break-all">
+                  {shareUrl}
+                </span>
+              </div>
+              <button
+                onClick={handleCopyLink}
+                className="bg-white text-black font-medium py-3 px-6 rounded-lg hover:bg-gray-100 transition-colors flex-shrink-0"
+              >
+                {copiedLink ? '✓ Copied' : 'Copy Link'}
+              </button>
+            </div>
+
+            {/* Mobile Layout */}
+            <div className="md:hidden">
+              <div className="bg-black/50 border border-white/10 rounded-lg px-4 py-3 mb-3">
+                <span className="text-white/90 font-mono text-sm break-all">
+                  {shareUrl}
+                </span>
+              </div>
+              <button
+                onClick={handleCopyLink}
+                className="w-full bg-white text-black font-medium py-3 px-6 rounded-lg hover:bg-gray-100 transition-colors"
+              >
+                {copiedLink ? '✓ Copied' : 'Copy Link'}
+              </button>
+            </div>
+
+            <p className="text-gray-400 text-sm mt-3">
+              Anyone with this link can access the Sten until limits are reached.
+            </p>
+          </div>
+
+          {/* Password Display (Conditional) */}
+          {isPasswordProtected && stenPassword && (
+            <div className="bg-gray-900/50 border border-white/10 rounded-xl p-5 md:p-6 mb-6">
+              <h3 className="text-white font-semibold mb-3 text-lg">Access Password</h3>
+              
+              {/* Desktop Layout */}
+              <div className="hidden md:flex items-center space-x-3">
+                <div className="flex-1 bg-black/50 border border-white/10 rounded-lg px-4 py-3">
+                  <span className="text-white/90 font-mono text-sm">
+                    {stenPassword.replace(/./g, '•')}
+                  </span>
+                </div>
+                <button
+                  onClick={handleCopyPassword}
+                  className="bg-gray-700 text-white font-medium py-3 px-6 rounded-lg hover:bg-gray-600 transition-colors flex-shrink-0"
+                >
+                  {copiedPassword ? '✓ Copied' : 'Copy Password'}
+                </button>
+              </div>
+
+              {/* Mobile Layout */}
+              <div className="md:hidden">
+                <div className="bg-black/50 border border-white/10 rounded-lg px-4 py-3 mb-3">
+                  <span className="text-white/90 font-mono text-sm">
+                    {stenPassword.replace(/./g, '•')}
+                  </span>
+                </div>
+                <button
+                  onClick={handleCopyPassword}
+                  className="w-full bg-gray-700 text-white font-medium py-3 px-6 rounded-lg hover:bg-gray-600 transition-colors"
+                >
+                  {copiedPassword ? '✓ Copied' : 'Copy Password'}
+                </button>
               </div>
             </div>
-          </div>
+          )}
 
-          {/* 2.5) Self-destruct timing info card */}
-          <div className="bg-gradient-to-r from-amber-900/20 to-yellow-900/20 border border-amber-500/30 rounded-xl p-5 mb-6 yellow-glow">
-            <div className="flex items-center space-x-3">
-              <div className="text-amber-400 text-xl">⏰</div>
-              <p className="text-white/90 text-sm leading-relaxed">
-                This Sten also self-destructs immediately after unlocking.
+          {/* Security Notice */}
+          <div className="bg-amber-900/20 border border-amber-500/30 rounded-xl p-5 md:p-6 mb-8">
+            <div className="flex items-start space-x-3">
+              <div className="text-amber-400 text-xl">⚠️</div>
+              <p className="text-amber-100 text-sm leading-relaxed">
+                For security reasons, this page will not be accessible again.
               </p>
             </div>
           </div>
 
-          {/* 3) Self-destruct info card */}
-          <div className="bg-gradient-to-r from-red-900/20 to-pink-900/20 border border-red-500/30 rounded-xl p-5 mb-6 red-glow">
-            <div className="flex items-start space-x-3">
-              <div className="text-red-400 text-2xl">💥</div>
-              <div>
-                <h3 className="text-red-400 font-semibold mb-2">Self-Destruct</h3>
-                <p className="text-white/80 text-sm leading-relaxed">
-                  This message will automatically delete itself after being solved.
-                  Keep your decryption key safe if you want to access it later.
-                </p>
-              </div>
-            </div>
-          </div>
-
-          {/* 4) Primary access block */}
-          <div className="bg-[#111111] border border-[rgba(255,255,255,0.08)] rounded-xl p-5 mb-6 shadow-inner">
-            <h3 className="text-white font-semibold mb-2">Primary access</h3>
-            <p className="text-white/70 text-sm mb-4">Direct attempt — no key required</p>
-
-            {/* Row layout: [Copy button] [Masked URL field] */}
-            <div className="flex items-center space-x-3">
-              <button
-                onClick={handleCopyPrimary}
-                className="bg-white text-black font-medium py-2 px-4 rounded-lg hover:bg-gray-100 transition-colors flex-shrink-0 min-w-[100px]"
-              >
-                {copiedPrimary ? '✓ Copied' : 'Copy link'}
-              </button>
-
-              <div className="flex-1 bg-black/50 border border-white/10 rounded-lg px-3 py-2">
-                <span className="text-white/60 font-mono text-sm">••••••••••••••••••••</span>
-              </div>
-            </div>
-          </div>
-
-          {/* 5) Challenge access block */}
-          <div className="bg-[#111111] border border-[rgba(255,255,255,0.08)] rounded-xl p-5 mb-6 shadow-inner">
-            <h3 className="text-white font-semibold mb-2">Challenge access</h3>
-            <p className="text-white/70 text-sm mb-4">Requires solving the Sten key</p>
-
-            {/* Row layout: [Copy button] [Masked URL field] */}
-            <div className="flex items-center space-x-3">
-              <button
-                onClick={handleCopyChallenge}
-                className="bg-gray-700 text-white font-medium py-2 px-4 rounded-lg hover:bg-gray-600 transition-colors flex-shrink-0 min-w-[100px]"
-              >
-                {copiedChallenge ? '✓ Copied' : 'Copy link'}
-              </button>
-
-              <div className="flex-1 bg-black/50 border border-white/10 rounded-lg px-3 py-2">
-                <span className="text-white/60 font-mono text-sm">••••••••••••••••••••</span>
-              </div>
-            </div>
-          </div>
-
-          {/* 6) Decryption key block */}
-          <div className="bg-[#111111] border border-[rgba(255,255,255,0.08)] rounded-xl p-5 mb-8 shadow-inner">
-            <h3 className="text-white font-semibold mb-2">Decryption key</h3>
-
-            {/* Row layout: [Copy button] [Masked key field] */}
-            <div className="flex items-center space-x-3">
-              <button
-                onClick={handleCopyKey}
-                className="bg-gray-600 text-white font-medium py-2 px-4 rounded-lg hover:bg-gray-500 transition-colors flex-shrink-0 min-w-[100px]"
-              >
-                {copiedKey ? '✓ Copied' : 'Copy key'}
-              </button>
-
-              <div className="flex-1 bg-black/50 border border-white/10 rounded-lg px-3 py-2">
-                <span className="text-white/60 font-mono text-sm">••••••••••••••••••••</span>
-              </div>
-            </div>
-          </div>
-
-          {/* 7) Primary CTA button */}
+          {/* Primary CTA Button */}
           <div className="mb-8">
             <Link
               to="/create"
-              className="block w-full bg-gradient-to-r from-purple-600 to-pink-600 text-white font-bold py-5 px-8 rounded-full purple-glow hover:from-purple-700 hover:to-pink-700 hover:scale-105 hover:shadow-2xl transition-all duration-300 text-center text-xl transform"
+              className="block w-full bg-gradient-to-r from-purple-600 to-pink-600 text-white font-bold py-4 px-8 rounded-full hover:from-purple-700 hover:to-pink-700 hover:scale-105 hover:shadow-2xl transition-all duration-300 text-center text-lg md:text-xl transform"
             >
               Create a new Sten
             </Link>
           </div>
 
-          {/* 8) Minimal footer */}
+          {/* Minimal Footer */}
           <div className="text-center mt-8">
             <p className="text-gray-500 text-xs">
               © Sten &nbsp;&nbsp;&nbsp; Privacy &nbsp;&nbsp;&nbsp; How it works

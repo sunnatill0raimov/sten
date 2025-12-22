@@ -39,16 +39,28 @@ const CreateSten: React.FC = () => {
 
     try {
       const stenData = {
+        title: stenTitle.trim() || undefined,
         message: stenText.trim(),
         isPasswordProtected: !!password.trim(),
         password: password.trim() || undefined,
         expiresIn: expiresAfter,
-        maxWinners: maxViews === 'unlimited' ? null : parseInt(maxViews),
-        oneTime: false
+        maxViews: maxViews === 'unlimited' ? null : parseInt(maxViews)
       };
 
       const response = await createSten(stenData);
-      navigate(`/ready/${response.stenId}`);
+      
+      // Extract ID from the link (format: http://localhost:5173/#/solve/123456789)
+      const linkParts = response.link.split('/');
+      const stenId = linkParts[linkParts.length - 1];
+      
+      navigate(`/ready/${stenId}`, { 
+        state: { 
+          isPasswordProtected: !!password.trim(),
+          password: password.trim() || null,
+          expiresIn: expiresAfter,
+          maxViews: maxViews 
+        }
+      });
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to create STEN');
     } finally {

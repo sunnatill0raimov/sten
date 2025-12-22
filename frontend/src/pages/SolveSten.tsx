@@ -1,14 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { getStenMetadata, unlockSten, viewSten } from '../api/stenApi';
-import type { StenMetadata, StenContent } from '../api/stenApi';
+import { getStenMetadata, viewSten } from '../api/stenApi';
+import type { StenMetadata } from '../api/stenApi';
 
 type ViewState = 
   | 'loading'
   | 'not_found'
   | 'expired'
-  | 'solved'
-  | 'winners_reached'
+  | 'views_reached'
   | 'password_required'
   | 'ready_to_view'
   | 'access_denied'
@@ -23,7 +22,6 @@ const SolveSten: React.FC = () => {
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
-  const [viewInfo, setViewInfo] = useState<StenContent | null>(null);
 
   // INITIAL LOAD: Get STEN metadata
   useEffect(() => {
@@ -42,11 +40,9 @@ const SolveSten: React.FC = () => {
           setState('not_found');
         } else if (metadataResponse.expired) {
           setState('expired');
-        } else if (metadataResponse.reason === 'already_solved') {
-          setState('solved');
-        } else if (metadataResponse.reason === 'winners_reached') {
-          setState('winners_reached');
-        } else if (metadataResponse.passwordProtected) {
+        } else if (typeof metadataResponse.viewsRemaining === 'number' && metadataResponse.viewsRemaining <= 0) {
+          setState('views_reached');
+        } else if (metadataResponse.isPasswordProtected) {
           setState('password_required');
         } else {
           // Password not required, can view immediately
@@ -61,23 +57,32 @@ const SolveSten: React.FC = () => {
     loadStenMetadata();
   }, [id]);
 
-  // Handle password unlock
-  const handleUnlock = async (e: React.FormEvent) => {
+  // Handle password unlock and viewing (unified function)
+  const handleAccessSten = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!id || !password.trim()) return;
+    if (!id) return;
 
     setIsLoading(true);
     setError('');
 
     try {
-      const result = await unlockSten(id, password);
+      const result = await viewSten(id, password || undefined);
       setContent(result.content);
-      setViewInfo(result);
       setState('sten_revealed');
     } catch (err) {
-      console.error('Unlock failed:', err);
-      setError(err instanceof Error ? err.message : 'Incorrect password');
-      setState('access_denied');
+      console.error('Access failed:', err);
+      const errorMessage = err instanceof Error ? err.message : 'Failed to access STEN';
+      
+      if (errorMessage.includes('Invalid password') || errorMessage.includes('Incorrect password')) {
+        setError('Incorrect password');
+        setState('access_denied');
+      } else if (errorMessage.includes('expired')) {
+        setState('expired');
+      } else if (errorMessage.includes('views') && errorMessage.includes('reached')) {
+        setState('views_reached');
+      } else {
+        setError(errorMessage);
+      }
     } finally {
       setIsLoading(false);
     }
@@ -93,11 +98,11 @@ const SolveSten: React.FC = () => {
     try {
       const result = await viewSten(id);
       setContent(result.content);
-      setViewInfo(result);
       setState('sten_revealed');
     } catch (err) {
       console.error('View failed:', err);
-      setError(err instanceof Error ? err.message : 'Failed to view STEN');
+      const errorMessage = err instanceof Error ? err.message : 'Failed to view STEN';
+      setError(errorMessage);
     } finally {
       setIsLoading(false);
     }
@@ -118,7 +123,7 @@ const SolveSten: React.FC = () => {
               STEN Not Found
             </h1>
             <p className="text-red-400 mb-6">
-              This STEN does not exist or has expired.
+              This STEN does not exist or has been deleted.
             </p>
             <button
               onClick={handleCreateNew}
@@ -138,9 +143,9 @@ const SolveSten: React.FC = () => {
       <div className="flex items-center justify-center min-h-screen px-6 py-8">
         <div className="w-full max-w-[420px]">
           <div className="bg-[#111111] border border-[rgba(255,255,255,0.08)] rounded-2xl p-8 text-center">
-            <h1 className="text-2xl font-bold text-white mb-4 Expired
-           ">
-              STEN </h1>
+            <h1 className="text-2xl font-bold text-white mb-4">
+              STEN Expired
+            </h1>
             <p className="text-red-400 mb-6">
               This STEN is no longer available.
             </p>
@@ -156,17 +161,17 @@ const SolveSten: React.FC = () => {
     );
   }
 
-  // STATE C: Already Solved
-  if (state === 'solved') {
+  // STATE C: Views Reached
+  if (state === 'views_reached') {
     return (
       <div className="flex items-center justify-center min-h-screen px-6 py-8">
         <div className="w-full max-w-[420px]">
           <div className="bg-[#111111] border border-[rgba(255,255,255,0.08)] rounded-2xl p-8 text-center">
             <h1 className="text-2xl font-bold text-white mb-4">
-              STEN Already Solved
+              Views Limit Reached
             </h1>
             <p className="text-red-400 mb-6">
-              This STEN has already been solved.
+              This STEN has reached its maximum number of views.
             </p>
             <button
               onClick={handleCreateNew}
@@ -180,31 +185,7 @@ const SolveSten: React.FC = () => {
     );
   }
 
-  // STATE D: Maximum Winners Reached
-  if (state === 'winners_reached') {
-    return (
-      <div className="flex items-center justify-center min-h-screen px-6 py-8">
-        <div className="w-full max-w-[420px]">
-          <div className="bg-[#111111] border border-[rgba(255,255,255,0.08)] rounded-2xl p-8 text-center">
-            <h1 className="text-2xl font-bold text-white mb-4">
-              Maximum Winners Reached
-            </h1>
-            <p className="text-red-400 mb-6">
-              This STEN has reached its maximum number of winners.
-            </p>
-            <button
-              onClick={handleCreateNew}
-              className="w-full bg-[#7C3AED] hover:bg-[#6D28D9] text-white font-medium py-3 px-6 rounded-full transition-colors"
-            >
-              Create New STEN
-            </button>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  // STATE E: Password Required
+  // STATE D: Password Required
   if (state === 'password_required') {
     return (
       <div className="flex items-center justify-center min-h-screen px-6 py-8">
@@ -217,15 +198,15 @@ const SolveSten: React.FC = () => {
             {metadata && (
               <div className="mb-6 p-4 bg-[#0A0A0A] rounded-lg">
                 <p className="text-sm text-white/70 mb-2">
-                  <span className="font-medium">Remaining views:</span> {metadata.remainingViews}
+                  <span className="font-medium">Views remaining:</span> {metadata.viewsRemaining}
                 </p>
                 <p className="text-sm text-white/70 mb-2">
-                  <span className="font-medium">One-time view:</span> {metadata.oneTime ? 'Yes' : 'No'}
+                  <span className="font-medium">Title:</span> {metadata.title || 'Untitled'}
                 </p>
               </div>
             )}
 
-            <form onSubmit={handleUnlock} className="space-y-6">
+            <form onSubmit={handleAccessSten} className="space-y-6">
               <div>
                 <label className="block text-sm font-medium text-white mb-2">
                   Enter Password
@@ -263,7 +244,7 @@ const SolveSten: React.FC = () => {
     );
   }
 
-  // STATE F: Ready To View (No Password Required)
+  // STATE E: Ready To View (No Password Required)
   if (state === 'ready_to_view') {
     return (
       <div className="flex items-center justify-center min-h-screen px-6 py-8">
@@ -276,10 +257,10 @@ const SolveSten: React.FC = () => {
             {metadata && (
               <div className="mb-6 p-4 bg-[#0A0A0A] rounded-lg">
                 <p className="text-sm text-white/70 mb-2">
-                  <span className="font-medium">Remaining views:</span> {metadata.remainingViews}
+                  <span className="font-medium">Views remaining:</span> {metadata.viewsRemaining}
                 </p>
                 <p className="text-sm text-white/70 mb-2">
-                  <span className="font-medium">One-time view:</span> {metadata.oneTime ? 'Yes' : 'No'}
+                  <span className="font-medium">Title:</span> {metadata.title || 'Untitled'}
                 </p>
               </div>
             )}
@@ -303,7 +284,7 @@ const SolveSten: React.FC = () => {
     );
   }
 
-  // STATE G: Access Denied (Wrong Password)
+  // STATE F: Access Denied (Wrong Password)
   if (state === 'access_denied') {
     return (
       <div className="flex items-center justify-center min-h-screen px-6 py-8">
@@ -335,7 +316,7 @@ const SolveSten: React.FC = () => {
     );
   }
 
-  // STATE H: Sten Revealed
+  // STATE G: Sten Revealed
   if (state === 'sten_revealed') {
     return (
       <div className="flex items-center justify-center min-h-screen px-6 py-8">
@@ -352,22 +333,6 @@ const SolveSten: React.FC = () => {
               </p>
             </div>
 
-            {viewInfo && (
-              <div className="mb-6 p-4 bg-[#0A0A0A] rounded-lg">
-                <p className="text-sm text-white/70 mb-2">
-                  <span className="font-medium">Current winners:</span> {viewInfo.currentWinners}
-                </p>
-                <p className="text-sm text-white/70 mb-2">
-                  <span className="font-medium">Status:</span> {viewInfo.solved ? 'Solved' : 'Active'}
-                </p>
-                {viewInfo.consumed && (
-                  <p className="text-sm text-yellow-400">
-                    <span className="font-medium">Note:</span> This STEN has been consumed and will no longer be available.
-                  </p>
-                )}
-              </div>
-            )}
-
             <button
               onClick={handleCreateNew}
               className="w-full bg-[#7C3AED] hover:bg-[#6D28D9] text-white font-medium py-3 px-6 rounded-full transition-colors"
@@ -380,7 +345,7 @@ const SolveSten: React.FC = () => {
     );
   }
 
-  // STATE I: Loading
+  // STATE H: Loading
   return (
     <div className="flex items-center justify-center min-h-screen px-6 py-8">
       <div className="w-full max-w-[420px]">

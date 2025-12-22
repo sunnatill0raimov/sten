@@ -4,20 +4,19 @@ import stenRoutes from './routes/sten.routes.js';
 
 const app = express();
 
-// CORS middleware - allows both local development and production
+// CORS middleware - allows frontend origin only
 app.use(cors({
   origin: [
-    process.env.FRONTEND_URL || 'http://localhost:5173',
-    'https://sten-llsp.onrender.com',
-    'http://localhost:5173',
-    'http://localhost:3000',
-    'http://localhost:3004',
-    'http://127.0.0.1:5173',
-    'http://127.0.0.1:3000'
+    'http://localhost:5174',  // Vite development server
+    'http://localhost:5173',  // Alternative Vite port
+    'https://sten-llsp.onrender.com',  // Production deployment
+    'http://127.0.0.1:5174',  // Alternative localhost
+    'http://127.0.0.1:5173'   // Alternative localhost
   ],
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization']
+  allowedHeaders: ['Content-Type', 'Authorization'],
+  optionsSuccessStatus: 200
 }));
 
 // Body parsing middleware

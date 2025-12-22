@@ -331,7 +331,7 @@ const ViewSten: React.FC = () => {
   // Active State
   if (stenState === 'active') {
     const isLowTime = timeRemaining.minutes < 10 && !timeRemaining.isExpired;
-    const isPasswordProtected = metadata?.requiresPassword || metadata?.passwordProtected;
+    const isPasswordProtected = metadata?.requiresPassword || metadata?.isPasswordProtected;
     
     return (
       <div className="flex items-center justify-center min-h-screen px-6 py-8">

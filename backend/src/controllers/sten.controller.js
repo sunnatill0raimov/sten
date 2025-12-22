@@ -2,503 +2,266 @@ import Sten from '../models/Sten.js'
 import Encryption from '../utils/crypto/encryption.js'
 import Crypto, { hashPasswordOnly } from '../utils/crypto/index.js'
 
+// Rate limiting map for brute-force protection
+const attemptCounts = new Map()
+const RATE_LIMIT_WINDOW = 15 * 60 * 1000 // 15 minutes
+const MAX_ATTEMPTS = 5
+
+/**
+ * Get all stens (admin endpoint)
+ */
 export const getAll = async (req, res) => {
 	try {
 		const stens = await Sten.find()
-
+		
 		const response = stens.map(sten => ({
 			_id: sten._id,
-			maxWinners: sten.maxWinners,
-			currentWinners: sten.currentWinners,
-			oneTime: sten.oneTime,
-			solved: sten.solved,
+			title: sten.title,
+			maxViews: sten.maxViews,
+			currentViews: sten.currentViews,
 			expiresAt: sten.expiresAt,
 			createdAt: sten.createdAt,
+			isPasswordProtected: sten.isPasswordProtected,
 		}))
-
+		
 		res.json(response)
 	} catch (error) {
+		console.error('Get all stens error:', error.message)
 		res.status(500).json({ message: error.message })
 	}
 }
 
 /**
- * NEW: Metadata-only endpoint for STEN viewing page
- * Returns STEN status without revealing content
+ * Create a new Sten
+ * Returns single link with optional plain password for Ready Page
  */
-export const getStenMetadata = async (req, res) => {
-	try {
-		const { id } = req.params
-
-		const sten = await Sten.findById(id)
-		if (!sten) {
-			return res.status(404).json({
-				exists: false,
-				reason: 'not_found',
-			})
-		}
-
-		// Check time-based expiration (only if expiresAt is set)
-		if (sten.expiresAt && sten.expiresAt < new Date()) {
-			return res.status(410).json({
-				exists: true,
-				expired: true,
-				reason: 'expired',
-			})
-		}
-
-		if (sten.solved) {
-			const remainingViews = sten.maxWinners
-				? sten.maxWinners - sten.currentWinners
-				: 'unlimited'
-			return res.status(200).json({
-				exists: true,
-				expired: false,
-				passwordProtected: sten.isPasswordProtected,
-				requiresPassword: sten.isPasswordProtected,
-				remainingViews,
-				maxWinners: sten.maxWinners,
-				currentWinners: sten.currentWinners,
-				oneTime: sten.oneTime,
-				status: 'solved',
-				reason: 'already_solved',
-			})
-		}
-
-		// Check if winners limit is reached (only if maxWinners is set)
-		if (sten.maxWinners && sten.currentWinners >= sten.maxWinners) {
-			return res.status(200).json({
-				exists: true,
-				expired: false,
-				passwordProtected: sten.isPasswordProtected,
-				requiresPassword: sten.isPasswordProtected,
-				remainingViews: 0,
-				maxWinners: sten.maxWinners,
-				currentWinners: sten.currentWinners,
-				oneTime: sten.oneTime,
-				status: 'winners_reached',
-			})
-		}
-
-		const remainingViews = sten.maxWinners
-			? sten.maxWinners - sten.currentWinners
-			: 'unlimited'
-		res.status(200).json({
-			exists: true,
-			expired: false,
-			passwordProtected: sten.isPasswordProtected,
-			requiresPassword: sten.isPasswordProtected,
-			remainingViews,
-			maxWinners: sten.maxWinners,
-			currentWinners: sten.currentWinners,
-			oneTime: sten.oneTime,
-			status: 'active',
-			createdAt: sten.createdAt,
-		})
-	} catch (error) {
-		console.error('Get STEN metadata error:', error.message)
-		res.status(500).json({ error: 'Failed to fetch STEN metadata' })
-	}
-}
-
-/**
- * NEW: Password unlock endpoint for protected STENs
- */
-export const unlockSten = async (req, res) => {
-	try {
-		const { id } = req.params
-		const { password } = req.body
-
-		const sten = await Sten.findById(id)
-		if (!sten) {
-			return res.status(404).json({ success: false, code: 'STEN_NOT_FOUND' })
-		}
-
-		// Check time-based expiration (only if expiresAt is set)
-		if (sten.expiresAt && sten.expiresAt < new Date()) {
-			return res.status(410).json({ success: false, code: 'STEN_EXPIRED' })
-		}
-
-		if (sten.solved) {
-			return res.status(403).json({ success: false, code: 'STEN_ALREADY_VIEWED' })
-		}
-
-		// Check winner limits (allow unlimited winners)
-		if (sten.maxWinners && sten.currentWinners >= sten.maxWinners) {
-			return res.status(403).json({ success: false, code: 'WINNERS_LIMIT_REACHED' })
-		}
-
-		if (!password || typeof password !== 'string') {
-			return res.status(400).json({ success: false, code: 'PASSWORD_REQUIRED' })
-		}
-
-		try {
-			const passwordHashObj = JSON.parse(sten.passwordHash)
-			const isPasswordValid = Crypto.verifyPasswordOnly(
-				password,
-				passwordHashObj
-			)
-
-			if (!isPasswordValid) {
-				return res.status(401).json({ success: false, code: 'INVALID_PASSWORD' })
-			}
-
-			const encryptedDataObj = JSON.parse(sten.encryptedMessage)
-			const content = Crypto.decryptMessageWithPassword(
-				encryptedDataObj,
-				password
-			)
-
-			let shouldExpire = false
-
-			if (sten.oneTime) {
-				shouldExpire = true
-			}
-
-			const updatedSten = await Sten.findByIdAndUpdate(
-				id,
-				{
-					$inc: { currentWinners: 1 },
-					...(sten.currentWinners + 1 >= sten.maxWinners || shouldExpire
-						? { solved: true }
-						: {}),
-				},
-				{ new: true }
-			)
-
-			if (shouldExpire) {
-				await Sten.findByIdAndDelete(id)
-			}
-
-			res.status(200).json({
-				content,
-				consumed: shouldExpire,
-				currentWinners: updatedSten?.currentWinners || sten.currentWinners + 1,
-				solved: shouldExpire || updatedSten?.solved || false,
-			})
-		} catch (decryptError) {
-			return res.status(401).json({ error: 'Incorrect password' })
-		}
-	} catch (error) {
-		console.error('Unlock STEN error:', error.message)
-		res.status(500).json({ error: 'Failed to unlock STEN' })
-	}
-}
-
-/**
- * NEW: View endpoint for unprotected STENs
- */
-export const viewSten = async (req, res) => {
-	try {
-		const { id } = req.params
-
-		const sten = await Sten.findById(id)
-		if (!sten) {
-			return res.status(404).json({ success: false, code: 'STEN_NOT_FOUND' })
-		}
-
-		// Check time-based expiration (only if expiresAt is set)
-		if (sten.expiresAt && sten.expiresAt < new Date()) {
-			return res.status(410).json({ success: false, code: 'STEN_EXPIRED' })
-		}
-
-		if (sten.solved) {
-			return res.status(403).json({ success: false, code: 'STEN_ALREADY_VIEWED' })
-		}
-
-		// Check winner limits (allow unlimited winners)
-		if (sten.maxWinners && sten.currentWinners >= sten.maxWinners) {
-			return res.status(403).json({ success: false, code: 'WINNERS_LIMIT_REACHED' })
-		}
-
-		if (!sten.isPasswordProtected) {
-			let shouldExpire = false
-
-			if (sten.oneTime) {
-				shouldExpire = true
-			}
-
-			const updatedSten = await Sten.findByIdAndUpdate(
-				id,
-				{
-					$inc: { currentWinners: 1 },
-					...(sten.currentWinners + 1 >= sten.maxWinners || shouldExpire
-						? { solved: true }
-						: {}),
-				},
-				{ new: true }
-			)
-
-			if (shouldExpire) {
-				await Sten.findByIdAndDelete(id)
-			}
-
-			res.status(200).json({
-				content: sten.content,
-				consumed: shouldExpire,
-				currentWinners: updatedSten?.currentWinners || sten.currentWinners + 1,
-				solved: shouldExpire || updatedSten?.solved || false,
-			})
-		} else {
-			return res.status(400).json({ success: false, code: 'PASSWORD_REQUIRED' })
-		}
-	} catch (error) {
-		console.error('View STEN error:', error.message)
-		res.status(500).json({ error: 'Failed to retrieve STEN content' })
-	}
-}
-
 export const createSten = async (req, res) => {
 	try {
-		// Log incoming request for debugging
-		console.log('📥 [CREATE STEN] Incoming request body:', JSON.stringify(req.body, null, 2))
+		console.log('📥 [CREATE STEN] Incoming request:', JSON.stringify(req.body, null, 2))
 		
 		const {
+			title,
 			message,
 			isPasswordProtected,
 			password,
-			expiresIn: requestExpiresIn,
-			maxWinners = 1,
-			oneTime = false,
+			expiresIn = '24_hours',
+			maxViews = 1
 		} = req.body
 
-		if (!message || typeof message !== 'string') {
-			console.log('❌ [CREATE STEN] Validation failed: message missing or not string')
-			return res
-				.status(400)
-				.json({ error: 'Message is required and must be a string' })
+		// Validate required fields
+		if (!message || typeof message !== 'string' || message.trim().length === 0) {
+			return res.status(400).json({ error: 'Message is required' })
 		}
 
+		// Validate password protection
 		if (typeof isPasswordProtected !== 'boolean') {
-			console.log('❌ [CREATE STEN] Validation failed: isPasswordProtected not boolean')
-			return res
-				.status(400)
-				.json({ error: 'isPasswordProtected must be a boolean' })
+			return res.status(400).json({ error: 'isPasswordProtected must be a boolean' })
 		}
 
+		// Validate password if protected
 		if (isPasswordProtected) {
 			if (!password || typeof password !== 'string') {
-				console.log('❌ [CREATE STEN] Validation failed: password required but missing')
-				return res
-					.status(400)
-					.json({ error: 'Password is required when protection is enabled' })
+				return res.status(400).json({ error: 'Password is required for password-protected stens' })
 			}
-
 			if (password.length < 8) {
-				console.log('❌ [CREATE STEN] Validation failed: password too short')
-				return res
-					.status(400)
-					.json({ error: 'Password must be at least 8 characters long' })
-			}
-		} else {
-			if (password && typeof password === 'string' && password.trim() !== '') {
-				console.log('❌ [CREATE STEN] Validation failed: password provided when not protected')
-				return res.status(400).json({
-					error: 'Password should not be provided when protection is disabled',
-				})
+				return res.status(400).json({ error: 'Password must be at least 8 characters long' })
 			}
 		}
 
-		// Handle expiration based on expiresIn type
-		const now = new Date()
-		let expiresAt = null
-		let expiresIn = req.body.expiresIn || '24_hours'
-
-		console.log('⏰ [CREATE STEN] Processing expiration:', { expiresIn, oneTime })
-
-		switch (expiresIn) {
-			case 'after_viewing':
-				// No time-based expiration
-				expiresAt = null
-				break
-			case '1_hour':
-				expiresAt = new Date(now.getTime() + 60 * 60 * 1000)
-				break
-			case '24_hours':
-				expiresAt = new Date(now.getTime() + 24 * 60 * 60 * 1000)
-				break
-			case '7_days':
-				expiresAt = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000)
-				break
-			case '30_days':
-				expiresAt = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000)
-				break
-			default:
-				console.log('❌ [CREATE STEN] Validation failed: invalid expiration type:', expiresIn)
-				return res.status(400).json({ error: 'Invalid expiration type' })
+		// Validate expiration type
+		const validExpirationTypes = ['1_hour', '24_hours', '7_days', '30_days']
+		if (!validExpirationTypes.includes(expiresIn)) {
+			return res.status(400).json({ error: 'Invalid expiration type' })
 		}
 
-		// Special handling for one-time STENs
-		if (oneTime) {
-			expiresIn = 'after_viewing'
-			expiresAt = null
+		// Validate maxViews
+		if (maxViews !== null && (typeof maxViews !== 'number' || maxViews < 1)) {
+			return res.status(400).json({ error: 'maxViews must be null (unlimited) or a positive number' })
 		}
 
-		if (maxWinners !== null && (typeof maxWinners !== 'number' || maxWinners < 1)) {
-			console.log('❌ [CREATE STEN] Validation failed: invalid maxWinners:', maxWinners)
-			return res
-				.status(400)
-				.json({ error: 'Max winners must be null (unlimited) or a positive number' })
-		}
-
-		if (oneTime && maxWinners !== null && maxWinners > 1) {
-			console.log('❌ [CREATE STEN] Validation failed: oneTime with maxWinners > 1')
-			return res
-				.status(400)
-				.json({ error: 'One-time STENs can only have 1 winner' })
-		}
-
+		// Prepare sten data
 		const stenData = {
+			title: title ? title.trim() : null,
 			isPasswordProtected,
-			expiresAt,
 			expiresIn,
-			maxWinners,
-			oneTime,
+			maxViews,
 		}
 
 		if (isPasswordProtected) {
-			console.log('🔐 [CREATE STEN] Creating password-protected STEN')
-			// Use password-based encryption to match the unlock method
-			const encryptedMessage = Encryption.encryptMessageWithPassword(
-				message,
-				password
-			)
+			console.log('🔐 [CREATE STEN] Creating password-protected sten')
+			
+			// Encrypt message with password
+			const encryptedMessage = Encryption.encryptMessageWithPassword(message, password)
 			const passwordHash = hashPasswordOnly(password)
-
+			
 			stenData.encryptedMessage = JSON.stringify(encryptedMessage)
 			stenData.iv = encryptedMessage.iv
 			stenData.passwordHash = JSON.stringify(passwordHash)
 			stenData.passwordSalt = passwordHash.salt
-			stenData.passwordStrength =
-				Crypto.assessPasswordStrength(password).strength
+			stenData.passwordStrength = Crypto.assessPasswordStrength(password).strength
 			stenData.securityLevel = 'medium'
 		} else {
-			console.log('📄 [CREATE STEN] Creating unprotected STEN')
-			// For unprotected STENs, store as plain text
+			console.log('📄 [CREATE STEN] Creating unprotected sten')
 			stenData.content = message
 			stenData.securityLevel = 'low'
 			stenData.passwordStrength = 'none'
 		}
 
-		console.log('📦 [CREATE STEN] Data to save:', JSON.stringify({
-			...stenData,
-			encryptedMessage: stenData.encryptedMessage ? '[ENCRYPTED]' : undefined,
-			passwordHash: stenData.passwordHash ? '[HASH]' : undefined,
-			content: stenData.content ? `[${stenData.content.length} chars]` : undefined
-		}, null, 2))
-
+		// Save sten to database
 		const sten = new Sten(stenData)
-		
-		console.log('💾 [CREATE STEN] Attempting to save to MongoDB...')
 		const savedSten = await sten.save()
 		
-		console.log('✅ [CREATE STEN] STEN saved successfully!')
-		console.log('   ID:', savedSten._id)
-		console.log('   Collection:', Sten.collection.name)
-		console.log('   ExpiresAt:', savedSten.expiresAt)
-		console.log('   OneTime:', savedSten.oneTime)
+		console.log('✅ [CREATE STEN] Sten saved successfully:', savedSten._id)
 
+		// Generate public URL
 		const baseUrl = process.env.BASE_URL || 'http://localhost:5173'
-		const publicUrl = `${baseUrl}/solve/${savedSten._id}`
+		const publicUrl = `${baseUrl}/#/solve/${savedSten._id}`
 
-		res.status(201).json({
-			stenId: savedSten._id,
-			publicUrl: publicUrl,
-		})
-	} catch (error) {
-		console.error('❌ [CREATE STEN] Error creating STEN:')
-		console.error('   Message:', error.message)
-		console.error('   Name:', error.name)
-		console.error('   Stack:', error.stack)
-		
-		// Log validation errors if present
-		if (error.errors) {
-			console.error('   Validation Errors:')
-			Object.keys(error.errors).forEach(field => {
-				console.error(`     - ${field}: ${error.errors[field].message}`)
-			})
+		// Return response with single link and optional password
+		const response = {
+			link: publicUrl,
 		}
+
+		// Include plain password only if sten is password-protected
+		if (isPasswordProtected) {
+			response.password = password
+		}
+
+		res.status(201).json(response)
 		
-		// Return more detailed error in development
+	} catch (error) {
+		console.error('❌ [CREATE STEN] Error:', error.message)
 		res.status(500).json({ 
-			error: 'Failed to create STEN',
+			error: 'Failed to create sten',
 			details: process.env.NODE_ENV !== 'production' ? error.message : undefined
 		})
 	}
 }
 
-export const solve = async (req, res) => {
+/**
+ * View/Access a Sten
+ * Handles both password-protected and unprotected stens
+ */
+export const viewSten = async (req, res) => {
 	try {
 		const { id } = req.params
 		const { password } = req.body
 
+		console.log('🔍 [VIEW STEN] Attempting to view sten:', id)
+
 		const sten = await Sten.findById(id)
 		if (!sten) {
-			return res.status(404).json({ error: 'Sten not found' })
+			return res.status(404).json({ error: 'Sten not found', code: 'STEN_NOT_FOUND' })
 		}
 
-		// Check time-based expiration (only if expiresAt is set)
-		if (sten.expiresAt && sten.expiresAt < new Date()) {
-			return res.status(410).json({ error: 'Sten has expired' })
+		// Check expiration
+		if (sten.expiresAt < new Date()) {
+			await Sten.findByIdAndDelete(id) // Clean up expired sten
+			return res.status(410).json({ error: 'Sten has expired', code: 'STEN_EXPIRED' })
 		}
 
-		if (sten.solved) {
-			return res.status(403).json({ error: 'Sten already solved' })
+		// Check view limits
+		if (sten.maxViews && sten.currentViews >= sten.maxViews) {
+			return res.status(403).json({ error: 'Maximum views reached', code: 'VIEWS_LIMIT_REACHED' })
 		}
 
-		// Check winner limits (allow unlimited winners)
-		if (sten.maxWinners && sten.currentWinners >= sten.maxWinners) {
-			return res.status(403).json({ error: 'Maximum winners reached' })
-		}
-
-		let decryptedMessage
-		try {
-			decryptedMessage = Crypto.accessSten(
-				sten.encryptedMessage,
-				sten.passwordHash,
-				password
-			)
-		} catch (accessError) {
-			return res.status(401).json({ error: 'Incorrect password' })
-		}
-
-		// Build update query - only check winner limit if maxWinners is set
-		const updateQuery = {
-			_id: id,
-			solved: false,
-		}
-
-		// Only add currentWinners check if maxWinners is not null (unlimited)
-		if (sten.maxWinners) {
-			updateQuery.currentWinners = { $lt: sten.maxWinners }
-		}
-
-		const updatedSten = await Sten.findOneAndUpdate(
-			updateQuery,
-			{
-				$inc: { currentWinners: 1 },
-			},
-			{
-				new: true,
-				runValidators: true,
+		// Handle password-protected stens
+		if (sten.isPasswordProtected) {
+			if (!password || typeof password !== 'string') {
+				return res.status(400).json({ error: 'Password required', code: 'PASSWORD_REQUIRED' })
 			}
-		)
 
-		if (!updatedSten) {
-			return res.status(403).json({ error: 'Maximum winners reached' })
+			// Check rate limiting for password attempts
+			const clientIP = req.ip || req.connection.remoteAddress
+			const attemptKey = `${id}:${clientIP}`
+			const now = Date.now()
+			
+			// Clean old attempts
+			if (attemptCounts.has(attemptKey)) {
+				const attempts = attemptCounts.get(attemptKey)
+				const validAttempts = attempts.filter(timestamp => now - timestamp < RATE_LIMIT_WINDOW)
+				attemptCounts.set(attemptKey, validAttempts)
+				
+				if (validAttempts.length >= MAX_ATTEMPTS) {
+					return res.status(429).json({ error: 'Too many password attempts. Try again later.', code: 'RATE_LIMITED' })
+				}
+			}
+
+			try {
+				const passwordHashObj = JSON.parse(sten.passwordHash)
+				const isPasswordValid = Crypto.verifyPasswordOnly(password, passwordHashObj)
+				
+				if (!isPasswordValid) {
+					// Record failed attempt
+					const attempts = attemptCounts.get(attemptKey) || []
+					attempts.push(now)
+					attemptCounts.set(attemptKey, attempts)
+					
+					return res.status(401).json({ error: 'Invalid password', code: 'INVALID_PASSWORD' })
+				}
+
+				// Decrypt message
+				const encryptedDataObj = JSON.parse(sten.encryptedMessage)
+				const content = Crypto.decryptMessageWithPassword(encryptedDataObj, password)
+				
+				// Clear rate limit on successful attempt
+				attemptCounts.delete(attemptKey)
+				
+				// Increment view count
+				await Sten.findByIdAndUpdate(id, { $inc: { currentViews: 1 } })
+				
+				return res.status(200).json({ content })
+				
+			} catch (decryptError) {
+				return res.status(401).json({ error: 'Invalid password', code: 'INVALID_PASSWORD' })
+			}
+		} else {
+			// Handle unprotected stens
+			await Sten.findByIdAndUpdate(id, { $inc: { currentViews: 1 } })
+			return res.status(200).json({ content: sten.content })
 		}
 
-		res.status(200).json({
-			success: true,
-			message: decryptedMessage,
-			currentWinners: updatedSten.currentWinners,
-			solved: updatedSten.solved,
-		})
 	} catch (error) {
-		res.status(500).json({ message: error.message })
+		console.error('❌ [VIEW STEN] Error:', error.message)
+		res.status(500).json({ error: 'Failed to retrieve sten', code: 'INTERNAL_ERROR' })
 	}
 }
 
+/**
+ * Get Sten metadata (for checking status without accessing content)
+ */
+export const getStenMetadata = async (req, res) => {
+	try {
+		const { id } = req.params
+		
+		const sten = await Sten.findById(id)
+		if (!sten) {
+			return res.status(404).json({ exists: false, code: 'STEN_NOT_FOUND' })
+		}
+
+		const now = new Date()
+		const expired = sten.expiresAt < now
+		const viewsRemaining = sten.maxViews ? Math.max(0, sten.maxViews - sten.currentViews) : 'unlimited'
+		
+		res.status(200).json({
+			exists: true,
+			expired,
+			isPasswordProtected: sten.isPasswordProtected,
+			viewsRemaining,
+			maxViews: sten.maxViews,
+			currentViews: sten.currentViews,
+			expiresAt: sten.expiresAt,
+			createdAt: sten.createdAt,
+			title: sten.title
+		})
+		
+	} catch (error) {
+		console.error('Get sten metadata error:', error.message)
+		res.status(500).json({ error: 'Failed to fetch sten metadata', code: 'INTERNAL_ERROR' })
+	}
+}
+
+// Legacy endpoints (keeping for backward compatibility but simplified)
 export const getById = async (req, res) => {
 	try {
 		const sten = await Sten.findById(req.params.id)
@@ -506,12 +269,12 @@ export const getById = async (req, res) => {
 
 		const response = {
 			_id: sten._id,
-			maxWinners: sten.maxWinners,
-			currentWinners: sten.currentWinners,
-			oneTime: sten.oneTime,
-			solved: sten.solved,
+			title: sten.title,
+			maxViews: sten.maxViews,
+			currentViews: sten.currentViews,
 			expiresAt: sten.expiresAt,
 			createdAt: sten.createdAt,
+			isPasswordProtected: sten.isPasswordProtected,
 		}
 
 		res.json(response)
@@ -520,27 +283,13 @@ export const getById = async (req, res) => {
 	}
 }
 
-export const getStatus = async (req, res) => {
-	try {
-		const sten = await Sten.findById(req.params.id)
-		if (!sten) return res.status(404).json({ message: 'Sten not found' })
-
-		let status = 'active'
-
-		if (sten.solved) {
-			status = 'solved'
-		} else if (sten.expiresAt < new Date()) {
-			status = 'expired'
-		}
-
-		res.json({ status })
-	} catch (error) {
-		res.status(500).json({ message: error.message })
-	}
-}
-
 export const create = async (req, res) => {
 	return createSten(req, res)
+}
+
+export const solve = async (req, res) => {
+	// Legacy endpoint - redirect to viewSten
+	return viewSten(req, res)
 }
 
 export const update = async (req, res) => {
@@ -554,8 +303,8 @@ export const update = async (req, res) => {
 		if (req.body.passwordHash != null) sten.passwordHash = req.body.passwordHash
 		if (req.body.passwordSalt != null) sten.passwordSalt = req.body.passwordSalt
 		if (req.body.expiresAt != null) sten.expiresAt = req.body.expiresAt
-		if (req.body.maxWinners != null) sten.maxWinners = req.body.maxWinners
-		if (req.body.oneTime != null) sten.oneTime = req.body.oneTime
+		if (req.body.maxViews != null) sten.maxViews = req.body.maxViews
+		if (req.body.title != null) sten.title = req.body.title
 
 		const updatedSten = await sten.save()
 		res.json(updatedSten)
