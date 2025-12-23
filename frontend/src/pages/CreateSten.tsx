@@ -14,17 +14,17 @@ const CreateSten: React.FC = () => {
   const [showPassword, setShowPassword] = useState(false);
 
   const expiresOptions = [
-    { value: '1_hour', label: '1 Hour' },
-    { value: '24_hours', label: '24 Hours' },
-    { value: '7_days', label: '7 Days' },
-    { value: '30_days', label: '30 Days' }
+    { value: '1_hour', label: '1 Hour', icon: '⏱️' },
+    { value: '24_hours', label: '24 Hours', icon: '📅' },
+    { value: '7_days', label: '7 Days', icon: '📆' },
+    { value: '30_days', label: '30 Days', icon: '🗓️' }
   ];
 
   const viewsOptions = [
-    { value: '1', label: '1 View' },
-    { value: '5', label: '5 Views' },
-    { value: '10', label: '10 Views' },
-    { value: 'unlimited', label: 'Unlimited' }
+    { value: '1', label: '1 View', icon: '👁️' },
+    { value: '5', label: '5 Views', icon: '👀' },
+    { value: '10', label: '10 Views', icon: '👁️‍🗨️' },
+    { value: 'unlimited', label: 'Unlimited', icon: '♾️' }
   ];
 
   // Generate random secure password
@@ -33,7 +33,6 @@ const CreateSten: React.FC = () => {
     const charset = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*()_+-=[]{}|;:,.<>?';
     let newPassword = '';
     
-    // Ensure at least one of each type
     const lowercase = 'abcdefghijklmnopqrstuvwxyz';
     const uppercase = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
     const numbers = '0123456789';
@@ -44,12 +43,10 @@ const CreateSten: React.FC = () => {
     newPassword += numbers[Math.floor(Math.random() * numbers.length)];
     newPassword += symbols[Math.floor(Math.random() * symbols.length)];
     
-    // Fill the rest randomly
     for (let i = newPassword.length; i < length; i++) {
       newPassword += charset[Math.floor(Math.random() * charset.length)];
     }
     
-    // Shuffle the password
     newPassword = newPassword.split('').sort(() => Math.random() - 0.5).join('');
     
     setPassword(newPassword);
@@ -79,7 +76,6 @@ const CreateSten: React.FC = () => {
 
       const response = await createSten(stenData);
       
-      // Extract ID from the link (format: http://localhost:5173/#/solve/123456789)
       const linkParts = response.link.split('/');
       const stenId = linkParts[linkParts.length - 1];
       
@@ -99,100 +95,142 @@ const CreateSten: React.FC = () => {
   };
 
   const hasContent = stenText.trim().length > 0;
+  const charCount = stenText.length;
 
   return (
-    <div className="min-h-screen bg-black p-8">
+    <div className="min-h-screen bg-gradient-to-br from-black via-[#0A0A0A] to-black p-8">
       <div className="max-w-3xl mx-auto">
-        <div className="bg-black border border-white/30 rounded-xl p-6 shadow-2xl">
-          <div className="text-center mb-6">
-            <h1 className="text-2xl font-bold text-white mb-2">
+        <div className="bg-gradient-to-br from-[#111111] to-[#0A0A0A] border border-white/10 rounded-3xl p-8 shadow-2xl backdrop-blur-xl">
+          {/* Header */}
+          <div className="text-center mb-8">
+            <div className="w-16 h-16 bg-gradient-to-br from-purple-500/30 to-purple-600/20 rounded-2xl flex items-center justify-center mx-auto mb-4">
+              <svg className="w-8 h-8 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+              </svg>
+            </div>
+            <h1 className="text-3xl font-bold bg-gradient-to-r from-white via-purple-200 to-white bg-clip-text text-transparent mb-2">
               Create Your Sten
             </h1>
-            <p className="text-gray-300 text-xs">
-              Create an encrypted, time-limited secure message.
+            <p className="text-white/60 text-sm">
+              Create an encrypted, self-destructing secure message
             </p>
           </div>
 
-          <form onSubmit={handleSubmit} className="space-y-5">
+          <form onSubmit={handleSubmit} className="space-y-6">
+            {/* Title Input */}
             <div className="space-y-2">
-              <label className="block text-xs font-bold text-white">
-                Title (optional)
+              <label className="flex items-center gap-2 text-sm font-semibold text-white">
+                <svg className="w-4 h-4 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
+                </svg>
+                Title <span className="text-white/40 font-normal">(optional)</span>
               </label>
               <input
                 type="text"
                 value={stenTitle}
                 onChange={(e) => setStenTitle(e.target.value)}
-                placeholder="e.g. Database password, Prize rules, API key"
-                className="w-full px-3 py-2 bg-black border border-white/30 rounded-lg text-white placeholder-gray-400 focus:border-white/50 focus:outline-none transition-all"
+                placeholder="e.g. Database credentials, API key, Secret note"
+                className="w-full px-4 py-3 bg-black/40 border border-white/10 rounded-xl text-white placeholder-white/40 focus:border-purple-500/50 focus:ring-2 focus:ring-purple-500/20 focus:outline-none transition-all"
               />
-              <p className="text-xs text-gray-400">
-                This title helps describe what the Sten contains.
+              <p className="text-xs text-white/40 flex items-center gap-1.5">
+                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                Helps identify what this secure message contains
               </p>
             </div>
 
+            {/* Secret Content */}
             <div className="space-y-2">
-              <label className="block text-xs font-bold text-white">
+              <label className="flex items-center gap-2 text-sm font-semibold text-white">
+                <svg className="w-4 h-4 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                </svg>
                 Secret Content <span className="text-red-400">*</span>
               </label>
-              <textarea
-                value={stenText}
-                onChange={(e) => setStenText(e.target.value)}
-                placeholder="Write or paste the sensitive information here..."
-                rows={4}
-                className="w-full px-3 py-2 bg-black border border-white/30 rounded-lg text-white placeholder-gray-400 focus:border-white/50 focus:outline-none resize-none transition-all"
-                required
-              />
-              <p className="text-xs text-gray-400">
-                This content is encrypted in your browser before being sent.
-              </p>
+              <div className="relative">
+                <textarea
+                  value={stenText}
+                  onChange={(e) => setStenText(e.target.value)}
+                  placeholder="Write or paste your sensitive information here..."
+                  rows={6}
+                  className="w-full px-4 py-3 bg-black/40 border border-white/10 rounded-xl text-white placeholder-white/40 focus:border-purple-500/50 focus:ring-2 focus:ring-purple-500/20 focus:outline-none resize-none transition-all"
+                  required
+                />
+                <div className="absolute bottom-3 right-3 text-xs text-white/30 bg-black/60 px-2 py-1 rounded">
+                  {charCount} characters
+                </div>
+              </div>
+              <div className="flex items-start gap-2 p-3 bg-blue-500/10 border border-blue-500/20 rounded-xl">
+                <svg className="w-4 h-4 text-blue-400 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                </svg>
+                <p className="text-xs text-blue-400/90 leading-relaxed">
+                  <span className="font-semibold">End-to-end encrypted:</span> Your content is encrypted in your browser before being sent
+                </p>
+              </div>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            {/* Expiration and Views Grid */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {/* Expiration Time */}
               <div className="space-y-2">
-                <label className="block text-xs font-bold text-white">
+                <label className="flex items-center gap-2 text-sm font-semibold text-white">
+                  <svg className="w-4 h-4 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
                   Expiration Time
                 </label>
                 <select
                   value={expiresAfter}
                   onChange={(e) => setExpiresAfter(e.target.value)}
-                  className="w-full px-3 py-2 bg-black border border-white/30 rounded-lg text-white focus:border-white/50 focus:outline-none transition-all"
+                  className="w-full px-4 py-3 bg-black/40 border border-white/10 rounded-xl text-white focus:border-purple-500/50 focus:ring-2 focus:ring-purple-500/20 focus:outline-none transition-all cursor-pointer"
                 >
                   {expiresOptions.map(option => (
-                    <option key={option.value} value={option.value} className="bg-black text-white">
-                      {option.label}
+                    <option key={option.value} value={option.value} className="bg-[#111111] text-white">
+                      {option.icon} {option.label}
                     </option>
                   ))}
                 </select>
               </div>
 
+              {/* Max Views */}
               <div className="space-y-2">
-                <label className="block text-xs font-bold text-white">
+                <label className="flex items-center gap-2 text-sm font-semibold text-white">
+                  <svg className="w-4 h-4 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                  </svg>
                   Max Views
                 </label>
                 <select
                   value={maxViews}
                   onChange={(e) => setMaxViews(e.target.value)}
-                  className="w-full px-3 py-2 bg-black border border-white/30 rounded-lg text-white focus:border-white/50 focus:outline-none transition-all"
+                  className="w-full px-4 py-3 bg-black/40 border border-white/10 rounded-xl text-white focus:border-purple-500/50 focus:ring-2 focus:ring-purple-500/20 focus:outline-none transition-all cursor-pointer"
                 >
                   {viewsOptions.map(option => (
-                    <option key={option.value} value={option.value} className="bg-black text-white">
-                      {option.label}
+                    <option key={option.value} value={option.value} className="bg-[#111111] text-white">
+                      {option.icon} {option.label}
                     </option>
                   ))}
                 </select>
               </div>
             </div>
 
+            {/* Password Protection */}
             <div className="space-y-2">
-              <label className="block text-xs font-bold text-white">
-                Access Password (optional)
+              <label className="flex items-center gap-2 text-sm font-semibold text-white">
+                <svg className="w-4 h-4 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z" />
+                </svg>
+                Access Password <span className="text-white/40 font-normal">(optional)</span>
               </label>
               <div className="relative">
                 <button
                   type="button"
                   onClick={generateRandomPassword}
-                  className="absolute left-3 top-1/2 -translate-y-1/2 text-white/60 hover:text-white transition-colors z-10"
-                  title="Generate random password"
+                  className="absolute left-3 top-1/2 -translate-y-1/2 text-white/60 hover:text-white transition-all z-10 hover:scale-110"
+                  title="Generate secure password"
                 >
                   <svg 
                     className="w-5 h-5" 
@@ -212,14 +250,14 @@ const CreateSten: React.FC = () => {
                   type={showPassword ? "text" : "password"}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  placeholder="Enter password or generate one"
-                  className="w-full pl-11 pr-11 py-2 bg-black border border-white/30 rounded-lg text-white placeholder-gray-400 focus:border-white/50 focus:outline-none transition-all"
+                  placeholder="Enter password or click refresh to generate"
+                  className="w-full pl-11 pr-11 py-3 bg-black/40 border border-white/10 rounded-xl text-white placeholder-white/40 focus:border-purple-500/50 focus:ring-2 focus:ring-purple-500/20 focus:outline-none transition-all"
                 />
                 {password && (
                   <button
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-white/60 hover:text-white transition-colors"
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-white/60 hover:text-white transition-all hover:scale-110"
                     title={showPassword ? "Hide password" : "Show password"}
                   >
                     {showPassword ? (
@@ -235,32 +273,74 @@ const CreateSten: React.FC = () => {
                   </button>
                 )}
               </div>
-              <p className="text-xs text-gray-400">
+              <p className="text-xs text-white/40 flex items-center gap-1.5">
+                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
                 {password 
-                  ? "This password is required to decrypt and view the Sten."
-                  : "Leave empty for no password protection, or click the refresh icon to generate a strong password."}
+                  ? "Password is required to decrypt and view this message"
+                  : "Add an extra layer of security with password protection"}
               </p>
             </div>
 
+            {/* Error Message */}
             {error && (
-              <div className="bg-red-900 border border-red-500 rounded-lg p-3">
-                <p className="text-xs text-red-300">{error}</p>
+              <div className="p-4 bg-gradient-to-br from-red-500/20 to-red-600/10 border border-red-500/30 rounded-xl backdrop-blur-sm animate-shake">
+                <div className="flex items-start gap-3">
+                  <div className="w-8 h-8 bg-red-500/30 rounded-lg flex items-center justify-center flex-shrink-0">
+                    <svg className="w-4 h-4 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </div>
+                  <div>
+                    <p className="text-red-400 font-semibold text-sm mb-1">Error Creating Sten</p>
+                    <p className="text-red-400/80 text-sm">{error}</p>
+                  </div>
+                </div>
               </div>
             )}
 
+            {/* Submit Button */}
             <button
               type="submit"
-              disabled={isLoading}
-              className={`w-full py-3 px-5 font-bold rounded-lg transition-all ${
+              disabled={isLoading || !hasContent}
+              className={`w-full py-4 px-6 font-bold rounded-xl transition-all ${
                 isLoading
-                  ? 'bg-gray-800 text-gray-500 cursor-not-allowed border border-gray-600'
+                  ? 'bg-gray-600 text-gray-400 cursor-not-allowed'
                   : hasContent
-                  ? 'bg-white text-black border border-white hover:bg-gray-100 focus:outline-none'
-                  : 'bg-gray-800 text-gray-400 border border-gray-600 cursor-pointer'
+                  ? 'bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-500 hover:to-purple-600 text-white hover:scale-[1.02] hover:shadow-2xl shadow-purple-500/50'
+                  : 'bg-gray-700 text-gray-500 cursor-not-allowed'
               }`}
             >
-              {isLoading ? 'Creating...' : 'Create Secure Link'}
+              {isLoading ? (
+                <div className="flex items-center justify-center gap-3">
+                  <div className="animate-spin rounded-full h-5 w-5 border-2 border-white/20 border-t-white"></div>
+                  Creating Secure Link...
+                </div>
+              ) : (
+                <div className="flex items-center justify-center gap-2">
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                  </svg>
+                  Create Secure Link
+                </div>
+              )}
             </button>
+
+            {/* Security Info */}
+            <div className="flex items-start gap-3 p-4 bg-gradient-to-br from-green-500/10 to-green-600/5 border border-green-500/20 rounded-xl">
+              <div className="w-8 h-8 bg-green-500/20 rounded-lg flex items-center justify-center flex-shrink-0">
+                <svg className="w-4 h-4 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+                </svg>
+              </div>
+              <div>
+                <p className="text-green-400 font-semibold text-sm mb-1">🔒 Secure & Private</p>
+                <p className="text-green-400/80 text-xs leading-relaxed">
+                  Your message is encrypted end-to-end and will self-destruct after being viewed or when it expires. We never store unencrypted content.
+                </p>
+              </div>
+            </div>
           </form>
         </div>
       </div>
