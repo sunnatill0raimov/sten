@@ -14,17 +14,17 @@ const CreateSten: React.FC = () => {
 	const [showPassword, setShowPassword] = useState(false)
 
 	const expiresOptions = [
-		{ value: '1_hour', label: '1 Hour', icon: '⏱️' },
-		{ value: '24_hours', label: '24 Hours', icon: '📅' },
-		{ value: '7_days', label: '7 Days', icon: '📆' },
-		{ value: '30_days', label: '30 Days', icon: '🗓️' },
+		{ value: '1_hour', label: '1 Hour' },
+		{ value: '24_hours', label: '24 Hours' },
+		{ value: '7_days', label: '7 Days' },
+		{ value: '30_days', label: '30 Days' },
 	]
 
 	const viewsOptions = [
-		{ value: '1', label: '1 View', icon: '👁️' },
-		{ value: '5', label: '5 Views', icon: '👀' },
-		{ value: '10', label: '10 Views', icon: '👁️‍🗨️' },
-		{ value: 'unlimited', label: 'Unlimited', icon: '♾️' },
+		{ value: '1', label: '1 View' },
+		{ value: '5', label: '5 Views' },
+		{ value: '10', label: '10 Views' },
+		{ value: 'unlimited', label: 'Unlimited' },
 	]
 
 	// Generate random secure password
@@ -260,7 +260,7 @@ const CreateSten: React.FC = () => {
 											value={option.value}
 											className='bg-[#111111] text-white'
 										>
-											{option.icon} {option.label}
+										{option.label}
 										</option>
 									))}
 								</select>
@@ -300,8 +300,7 @@ const CreateSten: React.FC = () => {
 											key={option.value}
 											value={option.value}
 											className='bg-[#111111] text-white'
-										>
-											{option.icon} {option.label}
+										>{option.label}
 										</option>
 									))}
 								</select>
