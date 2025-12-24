@@ -8,9 +8,10 @@ const StenReady: React.FC = () => {
   const [copiedPassword, setCopiedPassword] = useState(false);
 
   // Get data passed from CreateSten component
-  const { isPasswordProtected, password: stenPassword } = location.state || {
+  const { isPasswordProtected, password: stenPassword, qrCode } = location.state || {
     isPasswordProtected: false,
-    password: null
+    password: null,
+    qrCode: null
   };
 
   // Updated URLs to work with HashRouter
@@ -126,6 +127,44 @@ const StenReady: React.FC = () => {
                 >
                   {copiedPassword ? '✓ Copied' : 'Copy Password'}
                 </button>
+              </div>
+            </div>
+          )}
+
+          {/* QR Code Section (Conditional) */}
+          {qrCode && (
+            <div className="bg-gray-900/50 border border-white/10 rounded-xl p-5 md:p-6 mb-6">
+              <h3 className="text-white font-semibold mb-4 text-lg">QR Code</h3>
+
+              <div className="flex flex-col items-center space-y-4">
+                {/* QR Code Image */}
+                <div className="bg-white p-4 rounded-lg shadow-lg">
+                  <img
+                    src={qrCode}
+                    alt="QR Code for Sten access"
+                    className="w-48 h-48 object-contain"
+                  />
+                </div>
+
+                {/* Download Button */}
+                <button
+                  onClick={() => {
+                    const link = document.createElement('a');
+                    link.href = qrCode;
+                    link.download = `sten-qr-${id}.png`;
+                    link.click();
+                  }}
+                  className="bg-blue-600 text-white font-medium py-3 px-6 rounded-lg hover:bg-blue-700 transition-colors flex items-center space-x-2"
+                >
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                  </svg>
+                  <span>Download QR Code</span>
+                </button>
+
+                <p className="text-gray-400 text-sm text-center">
+                  Scan this QR code with any device to access your Sten
+                </p>
               </div>
             </div>
           )}

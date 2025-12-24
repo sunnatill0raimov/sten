@@ -30,6 +30,11 @@ export interface StenResponse {
 export interface CreateStenResponse {
 	link: string
 	password?: string // Only included if password-protected
+	qrCode?: string | null // Base64 encoded QR code image
+	logoUrl?: string | null
+	attachmentUrl?: string | null
+	attachmentName?: string | null
+	attachmentType?: string | null
 }
 
 export interface StenContent {
@@ -49,6 +54,10 @@ export interface StenMetadata {
 	description?: string
 	prize?: string
 	logoUrl?: string
+	attachmentUrl?: string | null
+	attachmentName?: string | null
+	attachmentType?: string | null
+	qrCode?: string | null
 	charCount?: number
 	code?: string
 	reason?: string
@@ -81,15 +90,20 @@ export class StenApiError extends Error {
  * Returns single link with optional plain password for Ready Page
  */
 export const createSten = async (
-	stenData: StenData
+	stenData: StenData | FormData
 ): Promise<CreateStenResponse> => {
 	try {
+		const headers: Record<string, string> = {}
+
+		// Don't set Content-Type header for FormData - let browser set it with boundary
+		if (!(stenData instanceof FormData)) {
+			headers['Content-Type'] = 'application/json'
+		}
+
 		const response = await fetch(`${API_BASE_URL}`, {
 			method: 'POST',
-			headers: {
-				'Content-Type': 'application/json',
-			},
-			body: JSON.stringify(stenData),
+			headers,
+			body: stenData instanceof FormData ? stenData : JSON.stringify(stenData),
 		})
 
 		if (!response.ok) {

@@ -1,5 +1,6 @@
 import express from 'express'
 import * as stenController from '../controllers/sten.controller.js'
+import multer from 'multer'
 
 const router = express.Router()
 
@@ -7,7 +8,10 @@ const router = express.Router()
 router.get('/', stenController.getAll)
 
 // POST /api/sten - Create a new sten (main endpoint)
-router.post('/', stenController.createSten)
+router.post('/', stenController.upload.fields([
+  { name: 'logo', maxCount: 1 },
+  { name: 'attachment', maxCount: 1 }
+]), stenController.createSten)
 
 // POST /api/sten/create (legacy endpoint - redirects to main create)
 router.post('/create', stenController.createSten)

@@ -1,11 +1,120 @@
 import Sten from '../models/Sten.js'
 import Encryption from '../utils/crypto/encryption.js'
 import Crypto, { hashPasswordOnly } from '../utils/crypto/index.js'
+import multer from 'multer'
+import path from 'path'
+import fs from 'fs'
+import crypto from 'crypto'
+import QRCode from 'qrcode'
 
 // Rate limiting map for brute-force protection
 const attemptCounts = new Map()
 const RATE_LIMIT_WINDOW = 15 * 60 * 1000 // 15 minutes
 const MAX_ATTEMPTS = 5
+
+// Configure multer storage with custom filename generation
+const storage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    const uploadsDir = 'uploads'
+    if (!fs.existsSync(uploadsDir)) {
+      fs.mkdirSync(uploadsDir, { recursive: true })
+    }
+    cb(null, uploadsDir)
+  },
+  filename: (req, file, cb) => {
+    const timestamp = Date.now()
+    const randomString = crypto.randomBytes(4).toString('hex')
+    const ext = path.extname(file.originalname)
+    const basename = path.basename(file.originalname, ext)
+    const safeBasename = basename.replace(/[^a-zA-Z0-9]/g, '-').substring(0, 20)
+    cb(null, `${file.fieldname}-${timestamp}-${randomString}-${safeBasename}${ext}`)
+  }
+})
+
+// File filter for logo (images only)
+const logoFileFilter = (req, file, cb) => {
+  const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp']
+  const maxSize = 5 * 1024 * 1024 // 5MB
+
+  if (!allowedTypes.includes(file.mimetype)) {
+    return cb(new Error('Invalid file type. Logo must be JPEG, JPG, PNG, or WEBP'), false)
+  }
+
+  if (file.size > maxSize) {
+    return cb(new Error('File too large. Logo must be less than 5MB'), false)
+  }
+
+  cb(null, true)
+}
+
+// File filter for attachment (pdf, images, documents)
+const attachmentFileFilter = (req, file, cb) => {
+  const allowedTypes = [
+    'application/pdf',
+    'image/jpeg', 'image/jpg', 'image/png', 'image/webp',
+    'application/msword',
+    'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+    'text/plain'
+  ]
+  const maxSize = 10 * 1024 * 1024 // 10MB
+
+  if (!allowedTypes.includes(file.mimetype)) {
+    return cb(new Error('Invalid file type. Attachment must be PDF, image, Word doc, or text file'), false)
+  }
+
+  if (file.size > maxSize) {
+    return cb(new Error('File too large. Attachment must be less than 10MB'), false)
+  }
+
+  cb(null, true)
+}
+
+// Configure multer with proper storage and file filters
+const upload = multer({
+  storage: storage,
+  fileFilter: (req, file, cb) => {
+    if (file.fieldname === 'logo') {
+      logoFileFilter(req, file, cb)
+    } else if (file.fieldname === 'attachment') {
+      attachmentFileFilter(req, file, cb)
+    } else {
+      cb(new Error('Invalid field name'), false)
+    }
+  },
+  limits: {
+    fileSize: 10 * 1024 * 1024 // 10MB overall limit
+  }
+})
+
+// Helper function to handle both JSON and form-data
+const parseStenData = (req) => {
+  // Check if request has files (multipart/form-data)
+  if (req.files) {
+    const parsedData = {
+      ...req.body,
+      logo: req.files.logo ? req.files.logo[0] : null,
+      attachment: req.files.attachment ? req.files.attachment[0] : null
+    }
+
+    // Handle string 'null' values for maxViews field
+    if (parsedData.maxViews === 'null') {
+      parsedData.maxViews = null
+    } else if (typeof parsedData.maxViews === 'string') {
+      parsedData.maxViews = parseInt(parsedData.maxViews, 10)
+    }
+
+    // Handle boolean conversion for isPasswordProtected
+    if (parsedData.isPasswordProtected === 'true') {
+      parsedData.isPasswordProtected = true
+    } else if (parsedData.isPasswordProtected === 'false') {
+      parsedData.isPasswordProtected = false
+    }
+
+    return parsedData
+  }
+  // Otherwise, it's JSON data
+  return req.body
+}
 
 /**
  * Get all stens (admin endpoint)
@@ -40,11 +149,12 @@ export const getAll = async (req, res) => {
  */
 export const createSten = async (req, res) => {
 	try {
-		console.log(
-			'📥 [CREATE STEN] Incoming request:',
-			JSON.stringify(req.body, null, 2)
-		)
+		// Parse data from either JSON or form-data
+		const parsedData = parseStenData(req)
+		let logoFile = parsedData.logo
+		let documentFile = parsedData.document
 
+		// Handle form-data fields
 		const {
 			title,
 			description,
@@ -55,7 +165,10 @@ export const createSten = async (req, res) => {
 			password,
 			expiresIn = '24_hours',
 			maxViews = 1,
-		} = req.body
+		} = parsedData
+
+		// Get the attachment file (new field name)
+		let attachmentFile = parsedData.attachment
 
 		// Validate required fields
 		if (
@@ -113,6 +226,19 @@ export const createSten = async (req, res) => {
 			maxViews,
 		}
 
+		// Handle file uploads - store files locally in /uploads directory
+		if (logoFile) {
+			// Store logo file path
+			stenData.logoUrl = `/uploads/${logoFile.filename}`
+		}
+
+		if (attachmentFile) {
+			// Store attachment information with new field names
+			stenData.attachmentName = attachmentFile.originalname
+			stenData.attachmentType = attachmentFile.mimetype
+			stenData.attachmentUrl = `/uploads/${attachmentFile.filename}`
+		}
+
 		if (isPasswordProtected) {
 			console.log('🔐 [CREATE STEN] Creating password-protected sten')
 
@@ -153,9 +279,35 @@ export const createSten = async (req, res) => {
 		const baseUrl = process.env.BASE_URL || 'http://localhost:5173'
 		const publicUrl = `${baseUrl}/#/solve/${savedSten._id}`
 
-		// Return response with single link and optional password
+		// Generate QR code for easy access and sharing
+		try {
+			const qrCodeData = await QRCode.toDataURL(publicUrl, {
+				errorCorrectionLevel: 'H',
+				width: 300,
+				margin: 2,
+				color: {
+					dark: '#000000',
+					light: '#FFFFFF'
+				}
+			})
+
+			// Save QR code to database
+			savedSten.qrCode = qrCodeData
+			await savedSten.save()
+			console.log('📱 [CREATE STEN] QR code generated successfully')
+		} catch (qrError) {
+			console.error('⚠️ [CREATE STEN] QR code generation failed:', qrError.message)
+			// Continue without QR code if generation fails
+		}
+
+		// Return response with single link, optional password, and all file data
 		const response = {
 			link: publicUrl,
+			qrCode: savedSten.qrCode || null,
+			logoUrl: savedSten.logoUrl || null,
+			attachmentUrl: savedSten.attachmentUrl || null,
+			attachmentName: savedSten.attachmentName || null,
+			attachmentType: savedSten.attachmentType || null,
 		}
 
 		// Include plain password only if sten is password-protected
@@ -368,6 +520,9 @@ export const getById = async (req, res) => {
 export const create = async (req, res) => {
 	return createSten(req, res)
 }
+
+// Export multer upload middleware for use in routes
+export { upload }
 
 export const solve = async (req, res) => {
 	// Legacy endpoint - redirect to viewSten

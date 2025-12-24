@@ -125,6 +125,51 @@ const stenSchema = new mongoose.Schema({
     required: false,
     min: 0,
   },
+  // Optional document attachment (legacy field for backward compatibility)
+  documentUrl: {
+    type: String,
+    required: false,
+    trim: true,
+    maxlength: 500, // URL length should be sufficient
+  },
+  documentName: {
+    type: String,
+    required: false,
+    trim: true,
+    maxlength: 256,
+  },
+  documentType: {
+    type: String,
+    required: false,
+    trim: true,
+    maxlength: 100,
+  },
+  // New attachment fields as per requirements
+  attachmentUrl: {
+    type: String,
+    required: false,
+    trim: true,
+    maxlength: 500, // URL length should be sufficient
+  },
+  attachmentName: {
+    type: String,
+    required: false,
+    trim: true,
+    maxlength: 256,
+  },
+  attachmentType: {
+    type: String,
+    required: false,
+    trim: true,
+    maxlength: 100,
+  },
+  // QR code for easy access and sharing
+  qrCode: {
+    type: String,
+    required: false,
+    trim: true,
+    maxlength: 100000, // Base64 encoded image can be large
+  },
 });
 
 // Pre-save middleware to handle expiration logic

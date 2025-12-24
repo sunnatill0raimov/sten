@@ -1,5 +1,6 @@
 import cors from 'cors'
 import express from 'express'
+import multer from 'multer'
 import stenRoutes from './routes/sten.routes.js'
 
 const app = express()
@@ -24,6 +25,17 @@ app.use(
 // Body parsing middleware (increase limits to accept base64 images from frontend)
 app.use(express.json({ limit: '5mb' }))
 app.use(express.urlencoded({ extended: true, limit: '5mb' }))
+
+// Create uploads directory if it doesn't exist
+import { dirname } from 'path'
+import { fileURLToPath } from 'url'
+import fs from 'fs'
+
+const __dirname = dirname(fileURLToPath(import.meta.url))
+const uploadsDir = 'uploads'
+if (!fs.existsSync(uploadsDir)) {
+	fs.mkdirSync(uploadsDir)
+}
 
 // Routes
 app.use('/api/sten', stenRoutes)

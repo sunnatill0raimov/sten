@@ -5,7 +5,10 @@ import { createSten } from '../api/stenApi'
 const CreateSten: React.FC = () => {
 	const navigate = useNavigate()
 	const fileInputRef = useRef<HTMLInputElement>(null)
+	const documentInputRef = useRef<HTMLInputElement>(null)
 	const [logo, setLogo] = useState<string | null>(null)
+	const [documentFile, setDocumentFile] = useState<File | null>(null)
+	const [documentName, setDocumentName] = useState<string | null>(null)
 	const [stenTitle, setStenTitle] = useState('')
 	const [stenText, setStenText] = useState('')
 	const [password, setPassword] = useState('')
@@ -71,17 +74,33 @@ const CreateSten: React.FC = () => {
 		setIsLoading(true)
 
 		try {
-			const stenData = {
-				title: stenTitle.trim(),
-				message: stenText.trim(),
-				logoUrl: logo || undefined,
-				isPasswordProtected: !!password.trim(),
-				password: password.trim() || undefined,
-				expiresIn: expiresAfter,
-				maxViews: maxViews === 'unlimited' ? null : parseInt(maxViews),
+			// Create FormData for multipart upload
+			const formData = new FormData()
+
+			// Add existing fields
+			formData.append('title', stenTitle.trim())
+			formData.append('message', stenText.trim())
+			formData.append('isPasswordProtected', String(!!password.trim()))
+			formData.append('expiresIn', expiresAfter)
+			formData.append('maxViews', maxViews === 'unlimited' ? 'null' : String(parseInt(maxViews)))
+
+			if (password.trim()) {
+				formData.append('password', password.trim())
 			}
 
-			const response = await createSten(stenData)
+			// Add logo if present
+			if (logo) {
+				// Convert data URL to blob and append
+				const logoBlob = await fetch(logo).then(r => r.blob())
+				formData.append('logo', logoBlob, 'logo.png')
+			}
+
+							// Add attachment if present
+							if (documentFile) {
+								formData.append('attachment', documentFile)
+							}
+
+			const response = await createSten(formData)
 			const linkParts = response.link.split('/')
 			const stenId = linkParts[linkParts.length - 1]
 
@@ -91,6 +110,7 @@ const CreateSten: React.FC = () => {
 					password: password.trim() || null,
 					expiresIn: expiresAfter,
 					maxViews: maxViews,
+					qrCode: response.qrCode || null,
 				},
 			})
 		} catch (err) {
@@ -111,6 +131,37 @@ const CreateSten: React.FC = () => {
 				setLogo(event.target?.result as string)
 			}
 			reader.readAsDataURL(file)
+		}
+	}
+
+	const handleDocumentChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+		const file = e.target.files?.[0]
+		if (file) {
+			// Accept common document formats
+			const validTypes = [
+				'application/pdf',
+				'image/',
+				'application/msword',
+				'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+				'text/plain'
+			]
+
+			if (!validTypes.some(type => file.type.match(type))) {
+				setError('Unsupported file type. Please upload PDF, images, or common document formats.')
+				return
+			}
+
+			setDocumentFile(file)
+			setDocumentName(file.name)
+		}
+	}
+
+	const removeDocument = (e: React.MouseEvent) => {
+		e.stopPropagation()
+		setDocumentFile(null)
+		setDocumentName(null)
+		if (documentInputRef.current) {
+			documentInputRef.current.value = ''
 		}
 	}
 
@@ -393,6 +444,94 @@ const CreateSten: React.FC = () => {
 										</option>
 									))}
 								</select>
+							</div>
+						</div>
+
+						{/* Document Upload Section */}
+						<div className='space-y-2'>
+							<label className='flex items-center gap-2 text-xs sm:text-sm font-semibold text-white'>
+								<svg
+									className='w-3.5 h-3.5 sm:w-4 sm:h-4 text-purple-400'
+									fill='none'
+									stroke='currentColor'
+									viewBox='0 0 24 24'
+								>
+									<path
+										strokeLinecap='round'
+										strokeLinejoin='round'
+										strokeWidth={2}
+										d='M7 11l5-5m0 0l5 5m-5-5v12'
+									/>
+								</svg>
+								Attach Document{' '}
+								<span className='text-white/40 font-normal'>(optional)</span>
+							</label>
+							<div className='relative'>
+								<input
+									type='file'
+									ref={documentInputRef}
+									onChange={handleDocumentChange}
+									accept='.pdf,.jpg,.jpeg,.png,.doc,.docx,.txt'
+									className='hidden'
+									disabled={isLoading}
+								/>
+								<div
+									className={`w-full px-3 sm:px-4 py-2.5 sm:py-3 text-sm sm:text-base bg-black/40 border border-white/10 rounded-lg sm:rounded-xl text-white placeholder-white/40 focus:border-purple-500/50 focus:ring-2 focus:ring-purple-500/20 focus:outline-none transition-all cursor-pointer ${
+										isLoading ? 'opacity-50 cursor-not-allowed' : 'hover:bg-black/30'
+									}`}
+									onClick={() => !isLoading && documentInputRef.current?.click()}
+								>
+									{documentName ? (
+										<div className='flex items-center justify-between'>
+											<span className='truncate max-w-[80%]'>{documentName}</span>
+											<button
+												type='button'
+												onClick={(e) => {
+													e.stopPropagation();
+													removeDocument(e);
+												}}
+												className='text-red-400 hover:text-red-300 transition-colors'
+												title='Remove document'
+											>
+												<svg
+													className='w-4 h-4'
+													fill='none'
+													stroke='currentColor'
+													viewBox='0 0 24 24'
+												>
+													<path
+														strokeLinecap='round'
+														strokeLinejoin='round'
+														strokeWidth={2}
+														d='M6 18L18 6M6 6l12 12'
+													/>
+												</svg>
+											</button>
+										</div>
+									) : (
+										<span>Click to attach PDF, image, or document</span>
+									)}
+								</div>
+								<p className='text-[10px] sm:text-xs text-white/40 flex items-center gap-1.5'>
+									<svg
+										className='w-3 h-3 sm:w-3.5 sm:h-3.5 flex-shrink-0'
+										fill='none'
+										stroke='currentColor'
+										viewBox='0 0 24 24'
+									>
+										<path
+											strokeLinecap='round'
+											strokeLinejoin='round'
+											strokeWidth={2}
+											d='M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z'
+										/>
+									</svg>
+									<span className='leading-tight'>
+										{documentFile
+											? `Document ready: ${documentFile.type}`
+											: 'PDF, images, Word docs, or text files'}
+									</span>
+								</p>
 							</div>
 						</div>
 

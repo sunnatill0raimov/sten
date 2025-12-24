@@ -488,6 +488,23 @@ const SolveSten: React.FC = () => {
                     </div>
                   </div>
 
+                  {sten?.attachmentUrl && (
+                    <div className="flex items-center gap-3">
+                      <svg
+                        className="w-5 h-5 text-indigo-400 flex-shrink-0"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
+                      </svg>
+                      <div>
+                        <p className="text-white/70 text-sm">Attachment:</p>
+                        <p className="text-white font-medium">{sten.attachmentName}</p>
+                      </div>
+                    </div>
+                  )}
+
                   {sten?.expiresAt && (
                     <div className="flex items-center gap-3">
                       <svg
@@ -500,7 +517,7 @@ const SolveSten: React.FC = () => {
                           strokeLinecap="round"
                           strokeLinejoin="round"
                           strokeWidth={2}
-                          d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
+                        d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
                         />
                       </svg>
                       <div>
@@ -513,6 +530,20 @@ const SolveSten: React.FC = () => {
                   )}
                 </div>
               </div>
+
+              {/* QR Code Section (Conditional) */}
+              {state === "password_required" && sten?.qrCode && (
+                <div className="bg-gray-900/50 border border-white/10 rounded-xl p-4 mb-4">
+                  <div className="flex flex-col items-center gap-3">
+                    <div className="bg-white p-3 rounded-lg">
+                      <img src={sten.qrCode} alt="QR Code" className="w-32 h-32 object-contain" />
+                    </div>
+                    <p className="text-white/70 text-sm text-center">
+                      Scan this QR code to access on mobile devices
+                    </p>
+                  </div>
+                </div>
+              )}
 
               {/* Password Form or Access Button */}
               <form onSubmit={handleAccessSten} className="space-y-4">
