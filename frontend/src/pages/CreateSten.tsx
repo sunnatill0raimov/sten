@@ -208,7 +208,7 @@ const CreateSten: React.FC = () => {
 								)}
 							</div>
 							<span className='mt-2 text-xs text-white/50'>
-								{logo ? 'Tap to change logo' : 'Optional'}
+								{logo ? 'Tap to change logo' : ''}
 							</span>
 						</label>
 					</div>
