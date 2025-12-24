@@ -74,6 +74,7 @@ const CreateSten: React.FC = () => {
 			const stenData = {
 				title: stenTitle.trim(),
 				message: stenText.trim(),
+				logoUrl: logo || undefined,
 				isPasswordProtected: !!password.trim(),
 				password: password.trim() || undefined,
 				expiresIn: expiresAfter,
@@ -164,7 +165,11 @@ const CreateSten: React.FC = () => {
 							/>
 							<div 
 								className='relative w-20 h-20 sm:w-24 sm:h-24 rounded-full bg-black/40 border-2 border-dashed border-white/20 flex items-center justify-center active:opacity-80 transition-opacity'
-								onClick={() => !isLoading && fileInputRef.current?.click()}
+								onClick={(e) => {
+									e.preventDefault();
+									e.stopPropagation();
+									!isLoading && fileInputRef.current?.click();
+								}}
 								title='Upload logo (optional)'
 							>
 								{logo ? (

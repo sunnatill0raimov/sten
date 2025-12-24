@@ -123,7 +123,13 @@ export const createSten = async (req, res) => {
 			)
 			const passwordHash = hashPasswordOnly(password)
 
-			stenData.encryptedMessage = JSON.stringify(encryptedMessage)
+			// Store the encrypted message data
+			stenData.encryptedMessage = JSON.stringify({
+				encryptedData: encryptedMessage.encryptedData,
+				iv: encryptedMessage.iv,
+				salt: encryptedMessage.salt,
+				algorithm: encryptedMessage.algorithm
+			})
 			stenData.iv = encryptedMessage.iv
 			stenData.passwordHash = JSON.stringify(passwordHash)
 			stenData.passwordSalt = passwordHash.salt

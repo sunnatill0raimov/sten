@@ -48,7 +48,7 @@ export interface StenMetadata {
 	title?: string
 	description?: string
 	prize?: string
-	logo?: string
+	logoUrl?: string
 	charCount?: number
 	code?: string
 	reason?: string

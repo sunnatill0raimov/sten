@@ -349,11 +349,11 @@ const SolveSten: React.FC = () => {
         <div className="max-w-3xl mx-auto">
           <div className="bg-gradient-to-br from-[#111111] to-[#0A0A0A] border border-white/10 rounded-2xl sm:rounded-3xl p-5 sm:p-6 md:p-8 shadow-2xl backdrop-blur-xl">
             <div className="text-center mb-6 sm:mb-8">
-              {sten?.logo ? (
+              {sten?.logoUrl ? (
                 <div className="flex flex-col items-center mb-4">
                   <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-full overflow-hidden border-2 border-white/10 bg-black/20">
                     <img 
-                      src={sten.logo} 
+                      src={sten.logoUrl} 
                       alt="Brand logo"
                       className="w-full h-full object-cover"
                       onError={(e) => {
@@ -363,13 +363,7 @@ const SolveSten: React.FC = () => {
                     />
                   </div>
                 </div>
-              ) : (
-                <div className="flex flex-col items-center mb-4">
-                  <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-full border-2 border-dashed border-white/10 flex items-center justify-center bg-black/10">
-                    <span className="text-xs text-white/30">No logo</span>
-                  </div>
-                </div>
-              )}
+              ) : null}
               <h1 className="text-2xl sm:text-3xl font-bold bg-gradient-to-r from-white via-purple-200 to-white bg-clip-text text-transparent mb-2">
                 Access Secure Content
               </h1>
@@ -575,11 +569,11 @@ const SolveSten: React.FC = () => {
         <div className="max-w-3xl mx-auto">
           <div className="bg-gradient-to-br from-[#111111] to-[#0A0A0A] border border-white/10 rounded-2xl sm:rounded-3xl p-5 sm:p-6 md:p-8 shadow-2xl backdrop-blur-xl">
             <div className="text-center mb-6 sm:mb-8">
-              {sten?.logo ? (
+              {sten?.logoUrl ? (
                 <div className="flex flex-col items-center mb-4">
                   <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-full overflow-hidden border-2 border-white/10 bg-black/20">
                     <img 
-                      src={sten.logo} 
+                      src={sten.logoUrl} 
                       alt="Brand logo"
                       className="w-full h-full object-cover"
                       onError={(e) => {
@@ -589,13 +583,7 @@ const SolveSten: React.FC = () => {
                     />
                   </div>
                 </div>
-              ) : (
-                <div className="flex flex-col items-center mb-4">
-                  <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-full border-2 border-dashed border-white/10 flex items-center justify-center bg-black/10">
-                    <span className="text-xs text-white/30">No logo</span>
-                  </div>
-                </div>
-              )}
+              ) : null}
               <h1 className="text-2xl sm:text-3xl font-bold bg-gradient-to-r from-white via-purple-200 to-white bg-clip-text text-transparent mb-2">
                 Secure Content
               </h1>

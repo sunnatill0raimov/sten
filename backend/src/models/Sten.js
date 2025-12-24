@@ -103,7 +103,7 @@ const stenSchema = new mongoose.Schema({
     type: String,
     required: false,
     trim: true,
-    maxlength: 2048,
+    maxlength: 100000, // Increased to support larger data URLs
   },
   // Optional description / rules for the Sten (visible before/after viewing)
   description: {
