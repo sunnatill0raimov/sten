@@ -1,9 +1,11 @@
-import React, { useState } from 'react'
+import React, { useState, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { createSten } from '../api/stenApi'
 
 const CreateSten: React.FC = () => {
 	const navigate = useNavigate()
+	const fileInputRef = useRef<HTMLInputElement>(null)
+	const [logo, setLogo] = useState<string | null>(null)
 	const [stenTitle, setStenTitle] = useState('')
 	const [stenText, setStenText] = useState('')
 	const [password, setPassword] = useState('')
@@ -70,7 +72,7 @@ const CreateSten: React.FC = () => {
 
 		try {
 			const stenData = {
-				title: stenTitle.trim() || undefined,
+				title: stenTitle.trim(),
 				message: stenText.trim(),
 				isPasswordProtected: !!password.trim(),
 				password: password.trim() || undefined,
@@ -79,7 +81,6 @@ const CreateSten: React.FC = () => {
 			}
 
 			const response = await createSten(stenData)
-
 			const linkParts = response.link.split('/')
 			const stenId = linkParts[linkParts.length - 1]
 
@@ -95,6 +96,28 @@ const CreateSten: React.FC = () => {
 			setError(err instanceof Error ? err.message : 'Failed to create STEN')
 		} finally {
 			setIsLoading(false)
+		}
+	}
+
+	const handleLogoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+		const file = e.target.files?.[0]
+		if (file) {
+			if (!file.type.match('image.*')) {
+				return
+			}
+			const reader = new FileReader()
+			reader.onload = (event) => {
+				setLogo(event.target?.result as string)
+			}
+			reader.readAsDataURL(file)
+		}
+	}
+
+	const removeLogo = (e: React.MouseEvent) => {
+		e.stopPropagation()
+		setLogo(null)
+		if (fileInputRef.current) {
+			fileInputRef.current.value = ''
 		}
 	}
 
@@ -122,12 +145,72 @@ const CreateSten: React.FC = () => {
 								/>
 							</svg>
 						</div>
+
 						<h1 className='text-2xl sm:text-3xl font-bold bg-gradient-to-r from-white via-purple-200 to-white bg-clip-text text-transparent mb-2'>
 							Create Your Sten
 						</h1>
-						<p className='text-white/60 text-xs sm:text-sm px-4'>
+						<p className='text-white/60 text-xs sm:text-sm px-4 mb-4'>
 							Create an encrypted, self-destructing secure message
 						</p>
+						{/* Logo Upload - Touch Optimized */}
+						<label className='flex flex-col items-center mb-4'>
+							<input
+								type='file'
+								ref={fileInputRef}
+								onChange={handleLogoChange}
+								accept='image/png, image/jpeg, image/jpg, image/webp'
+								className='hidden'
+								disabled={isLoading}
+							/>
+							<div 
+								className='relative w-20 h-20 sm:w-24 sm:h-24 rounded-full bg-black/40 border-2 border-dashed border-white/20 flex items-center justify-center active:opacity-80 transition-opacity'
+								onClick={() => !isLoading && fileInputRef.current?.click()}
+								title='Upload logo (optional)'
+							>
+								{logo ? (
+									<>
+										<img 
+											src={logo} 
+											alt='Logo preview' 
+											className='w-full h-full rounded-full object-cover'
+										/>
+										<button
+											type='button'
+											onClick={(e) => {
+												e.stopPropagation();
+												removeLogo(e);
+											}}
+											className='absolute -top-2 -right-2 w-7 h-7 bg-red-500 rounded-full flex items-center justify-center text-white text-sm active:bg-red-600 transition-colors'
+											aria-label='Remove logo'
+										>
+											×
+										</button>
+									</>
+								) : (
+								<>
+									<svg
+										className='w-8 h-8 text-white/60'
+										fill='none'
+										stroke='currentColor'
+										viewBox='0 0 24 24'
+									>
+										<path
+											strokeLinecap='round'
+											strokeLinejoin='round'
+											strokeWidth={2}
+											d='M12 4v16m8-8H4'
+										/>
+									</svg>
+									<span className='absolute bottom-0 translate-y-4 text-xs text-white/70 bg-black/70 px-2 py-0.5 rounded-full'>
+										Tap to add logo
+									</span>
+								</>
+								)}
+							</div>
+							<span className='mt-2 text-xs text-white/50'>
+								{logo ? 'Tap to change logo' : 'Optional'}
+							</span>
+						</label>
 					</div>
 
 					<form onSubmit={handleSubmit} className='space-y-5 sm:space-y-6'>
@@ -260,7 +343,7 @@ const CreateSten: React.FC = () => {
 											value={option.value}
 											className='bg-[#111111] text-white'
 										>
-										{option.label}
+											{option.label}
 										</option>
 									))}
 								</select>
@@ -300,7 +383,8 @@ const CreateSten: React.FC = () => {
 											key={option.value}
 											value={option.value}
 											className='bg-[#111111] text-white'
-										>{option.label}
+										>
+											{option.label}
 										</option>
 									))}
 								</select>

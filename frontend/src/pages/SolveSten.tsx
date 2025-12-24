@@ -286,6 +286,20 @@ const SolveSten: React.FC = () => {
         <div className="w-full max-w-[560px]">
           <div className="bg-[#111111] border border-[rgba(255,255,255,0.08)] rounded-2xl shadow-2xl overflow-hidden">
             <div className="p-8">
+              {sten?.logo && (
+                <div className="flex flex-col items-center mb-4">
+                  <div 
+                    className="relative w-16 h-16 sm:w-20 sm:h-20 rounded-full bg-black/40 border border-white/10 flex items-center justify-center cursor-pointer hover:bg-black/60 transition-colors group"
+                  >
+                    <img 
+                      src={sten.logo} 
+                      alt="Brand logo" 
+                      className="w-full h-full rounded-full object-cover"
+                    />
+                  </div>
+                  <span className='mt-2 text-xs text-white/50'>Brand</span>
+                </div>
+              )}
               <h1 className="text-3xl font-bold text-white text-center mb-8">
                 Access Secure Content
               </h1>
@@ -404,10 +418,24 @@ const SolveSten: React.FC = () => {
   // Sten revealed state
   if (state === 'sten_revealed') {
     return (
-      <div className="min-h-screen bg-[#0A0A0A] flex items-center justify-center px-4 py-8">
-        <div className="w-full max-w-[800px]">
+      <div className="min-h-screen bg-[#0A0A0A] flex items-center justify-center px-4">
+        <div className="w-full max-w-3xl">
           <div className="bg-[#111111] border border-[rgba(255,255,255,0.08)] rounded-2xl shadow-2xl overflow-hidden">
             <div className="p-8">
+              {sten?.logo && (
+                <div className="flex flex-col items-center mb-4">
+                  <div 
+                    className="relative w-16 h-16 sm:w-20 sm:h-20 rounded-full bg-black/40 border border-white/10 flex items-center justify-center cursor-pointer hover:bg-black/60 transition-colors group"
+                  >
+                    <img 
+                      src={sten.logo} 
+                      alt="Brand logo" 
+                      className="w-full h-full rounded-full object-cover"
+                    />
+                  </div>
+                  <span className='mt-2 text-xs text-white/50'>Brand</span>
+                </div>
+              )}
               <div className="flex items-center justify-between mb-6">
                 <h1 className="text-2xl font-bold text-white">Secure Content</h1>
                 <div className="flex gap-2">
