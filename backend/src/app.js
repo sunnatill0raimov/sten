@@ -37,6 +37,9 @@ if (!fs.existsSync(uploadsDir)) {
 	fs.mkdirSync(uploadsDir)
 }
 
+// Serve static files from uploads directory
+app.use('/uploads', express.static('uploads'))
+
 // Routes
 app.use('/api/sten', stenRoutes)
 

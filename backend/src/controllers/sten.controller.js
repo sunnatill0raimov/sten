@@ -300,12 +300,15 @@ export const createSten = async (req, res) => {
 			// Continue without QR code if generation fails
 		}
 
+		// Construct full URLs for files
+		const backendUrl = process.env.BACKEND_URL || `${req.protocol}://${req.get('host')}`
+
 		// Return response with single link, optional password, and all file data
 		const response = {
 			link: publicUrl,
 			qrCode: savedSten.qrCode || null,
-			logoUrl: savedSten.logoUrl || null,
-			attachmentUrl: savedSten.attachmentUrl || null,
+			logoUrl: savedSten.logoUrl ? `${backendUrl}${savedSten.logoUrl}` : null,
+			attachmentUrl: savedSten.attachmentUrl ? `${backendUrl}${savedSten.attachmentUrl}` : null,
 			attachmentName: savedSten.attachmentName || null,
 			attachmentType: savedSten.attachmentType || null,
 		}
@@ -419,9 +422,12 @@ export const viewSten = async (req, res) => {
 				// Increment view count
 				await Sten.findByIdAndUpdate(id, { $inc: { currentViews: 1 } })
 
+				// Construct full URLs for files
+				const backendUrl = process.env.BACKEND_URL || `${req.protocol}://${req.get('host')}`
+
 				return res.status(200).json({
 					content,
-					logoUrl: sten.logoUrl || null,
+					logoUrl: sten.logoUrl ? `${backendUrl}${sten.logoUrl}` : null,
 					description: sten.description || null,
 					prize: sten.prize || null,
 					charCount: sten.charCount || 0,
@@ -434,9 +440,13 @@ export const viewSten = async (req, res) => {
 		} else {
 			// Handle unprotected stens
 			await Sten.findByIdAndUpdate(id, { $inc: { currentViews: 1 } })
+
+			// Construct full URLs for files
+			const backendUrl = process.env.BACKEND_URL || `${req.protocol}://${req.get('host')}`
+
 			return res.status(200).json({
 				content: sten.content,
-				logoUrl: sten.logoUrl || null,
+				logoUrl: sten.logoUrl ? `${backendUrl}${sten.logoUrl}` : null,
 				description: sten.description || null,
 				prize: sten.prize || null,
 				charCount: sten.charCount || 0,
@@ -468,11 +478,14 @@ export const getStenMetadata = async (req, res) => {
 			? Math.max(0, sten.maxViews - sten.currentViews)
 			: 'unlimited'
 
+		// Construct full URLs for files
+		const backendUrl = process.env.BACKEND_URL || `${req.protocol}://${req.get('host')}`
+
 		res.status(200).json({
 			exists: true,
 			expired,
 			isPasswordProtected: sten.isPasswordProtected,
-			logoUrl: sten.logoUrl || null,
+			logoUrl: sten.logoUrl ? `${backendUrl}${sten.logoUrl}` : null,
 			description: sten.description || null,
 			prize: sten.prize || null,
 			charCount: sten.charCount || 0,
@@ -482,6 +495,7 @@ export const getStenMetadata = async (req, res) => {
 			expiresAt: sten.expiresAt,
 			createdAt: sten.createdAt,
 			title: sten.title,
+			qrCode: sten.qrCode || null,
 		})
 	} catch (error) {
 		console.error('Get sten metadata error:', error.message)
