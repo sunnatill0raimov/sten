@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { getStenMetadata, viewSten, type StenMetadata } from "../api/stenApi";
+import { useCopyProtection } from "../hooks/useCopyProtection";
 
 type ViewState =
   | "loading"
@@ -15,6 +16,7 @@ type ViewState =
 const SolveSten: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const copyProtectionRef = useCopyProtection();
   const [state, setState] = useState<ViewState>("loading");
   const [sten, setSten] = useState<StenMetadata | null>(null);
   const [timeRemaining, setTimeRemaining] = useState<string>("");
@@ -547,7 +549,7 @@ const SolveSten: React.FC = () => {
 
               {/* Password Form or Access Button */}
               <form onSubmit={handleAccessSten} className="space-y-4">
-                {state === "password_required" && (
+                {(state === "password_required" || state === "access_denied") && hasPassword() && (
                   <div>
                     <label
                       htmlFor="password"
@@ -565,12 +567,11 @@ const SolveSten: React.FC = () => {
                       required
                       autoFocus
                     />
-                  </div>
-                )}
-
-                {error && state === "access_denied" && (
-                  <div className="bg-red-900/20 border border-red-500/50 rounded-xl p-4">
-                    <p className="text-red-400 text-sm">{error}</p>
+                    {error && (
+                      <div className="mt-2 bg-red-900/20 border border-red-500/50 rounded-xl p-4">
+                        <p className="text-red-400 text-sm">{error}</p>
+                      </div>
+                    )}
                   </div>
                 )}
 
@@ -596,9 +597,9 @@ const SolveSten: React.FC = () => {
   // Sten revealed state
   if (state === "sten_revealed") {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-black via-[#0A0A0A] to-black p-4 sm:p-6 md:p-8">
+      <div ref={copyProtectionRef} className="min-h-screen bg-gradient-to-br from-black via-[#0A0A0A] to-black p-4 sm:p-6 md:p-8">
         <div className="max-w-3xl mx-auto">
-          <div className="bg-gradient-to-br from-[#111111] to-[#0A0A0A] border border-white/10 rounded-2xl sm:rounded-3xl p-5 sm:p-6 md:p-8 shadow-2xl backdrop-blur-xl">
+          <div className="bg-gradient-to-br from-[#111111] to-[#0A0A0A] border border-white/10 rounded-2xl sm:rounded-3xl p-5 sm:p-6 md:p-8 shadow-2xl backdrop-blur-xl sten-content-protected">
             <div className="text-center mb-6 sm:mb-8">
               {sten?.logoUrl ? (
                 <div className="flex flex-col items-center mb-4">

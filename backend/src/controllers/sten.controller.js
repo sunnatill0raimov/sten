@@ -275,9 +275,21 @@ export const createSten = async (req, res) => {
 
 		console.log('✅ [CREATE STEN] Sten saved successfully:', savedSten._id)
 
-		// Generate public URL
-		const baseUrl = process.env.BASE_URL || 'http://localhost:5173'
-		const publicUrl = `${baseUrl}/#/solve/${savedSten._id}`
+		// Generate public URL for QR code
+		// In production, default to production frontend URL
+		// In development, only use localhost if explicitly configured via BASE_URL
+		let baseUrl
+		if (process.env.BASE_URL) {
+			baseUrl = process.env.BASE_URL
+		} else if (process.env.NODE_ENV === 'production') {
+			baseUrl = 'https://sten-llsp.onrender.com'
+		} else {
+			// Development without explicit BASE_URL - don't generate QR or use a safe default
+			console.warn('⚠️ [CREATE STEN] BASE_URL not configured for development. QR code generation skipped.')
+			baseUrl = null
+		}
+
+		const publicUrl = baseUrl ? `${baseUrl}/#/solve/${savedSten._id}` : null
 
 		// Generate QR code for easy access and sharing
 		try {

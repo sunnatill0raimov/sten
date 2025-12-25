@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { getStenMetadata, viewSten, unlockSten } from '../api/stenApi';
 import type { StenMetadata, StenContent } from '../api/stenApi';
+import { useCopyProtection } from '../hooks/useCopyProtection';
 
 type StenState = 
   | 'loading'
@@ -21,6 +22,7 @@ interface TimeRemaining {
 const ViewSten: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const copyProtectionRef = useCopyProtection();
   const [stenState, setStenState] = useState<StenState>('loading');
   const [metadata, setMetadata] = useState<StenMetadata | null>(null);
   const [content, setContent] = useState<string>('');
@@ -330,9 +332,9 @@ const ViewSten: React.FC = () => {
     const isPasswordProtected = metadata?.requiresPassword || metadata?.isPasswordProtected;
     
     return (
-      <div className="flex items-center justify-center min-h-screen px-6 py-8 bg-gradient-to-br from-black via-[#0A0A0A] to-black">
+      <div ref={copyProtectionRef} className="flex items-center justify-center min-h-screen px-6 py-8 bg-gradient-to-br from-black via-[#0A0A0A] to-black">
         <div className="w-full max-w-[680px]">
-          <div className="bg-gradient-to-br from-[#111111] to-[#0A0A0A] border border-white/10 rounded-3xl overflow-hidden shadow-2xl backdrop-blur-xl">
+          <div className="bg-gradient-to-br from-[#111111] to-[#0A0A0A] border border-white/10 rounded-3xl overflow-hidden shadow-2xl backdrop-blur-xl sten-content-protected">
             {/* Header */}
             <div className="p-8 pb-6 border-b border-white/5">
               <h1 className="text-4xl font-bold text-center mb-2 bg-gradient-to-r from-purple-400 via-white to-purple-400 bg-clip-text text-transparent">
