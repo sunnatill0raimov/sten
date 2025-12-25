@@ -21,6 +21,7 @@ const SolveSten: React.FC = () => {
   const [sten, setSten] = useState<StenMetadata | null>(null);
   const [timeRemaining, setTimeRemaining] = useState<string>("");
   const [content, setContent] = useState<string>("");
+  const [contentData, setContentData] = useState<any>(null); // Store full content data
   const [password, setPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
@@ -115,6 +116,7 @@ const SolveSten: React.FC = () => {
     try {
       const result = await viewSten(id, password || undefined);
       setContent(result.content);
+      setContentData(result); // Store full content data
 
       // Update sten data with new view count
       setSten((prev) =>
@@ -601,21 +603,6 @@ const SolveSten: React.FC = () => {
         <div className="max-w-3xl mx-auto">
           <div className="bg-gradient-to-br from-[#111111] to-[#0A0A0A] border border-white/10 rounded-2xl sm:rounded-3xl p-5 sm:p-6 md:p-8 shadow-2xl backdrop-blur-xl sten-content-protected">
             <div className="text-center mb-6 sm:mb-8">
-              {sten?.logoUrl ? (
-                <div className="flex flex-col items-center mb-4">
-                  <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-full overflow-hidden border-2 border-white/10 bg-black/20">
-                    <img 
-                      src={sten.logoUrl} 
-                      alt="Brand logo"
-                      className="w-full h-full object-cover"
-                      onError={(e) => {
-                        const target = e.target as HTMLImageElement;
-                        target.style.display = 'none';
-                      }}
-                    />
-                  </div>
-                </div>
-              ) : null}
               <h1 className="text-2xl sm:text-3xl font-bold bg-gradient-to-r from-white via-purple-200 to-white bg-clip-text text-transparent mb-2">
                 Secure Content
               </h1>
@@ -623,6 +610,7 @@ const SolveSten: React.FC = () => {
                 Your secure message is ready to view
               </p>
             </div>
+
             <div className="flex items-center justify-between mb-6">
               <h1 className="text-2xl font-bold text-white">Secure Content</h1>
               <div className="flex gap-2">
@@ -653,6 +641,30 @@ const SolveSten: React.FC = () => {
                 </button>
               </div>
             </div>
+
+            {/* Image display at top of content (attachment image takes priority) */}
+            {(() => {
+              // Priority: attachment image > logo
+              const imageUrl = contentData?.attachmentUrl && contentData?.attachmentType?.startsWith('image/')
+                ? contentData.attachmentUrl
+                : sten?.logoUrl;
+
+              return imageUrl ? (
+                <div className="mb-6">
+                  <div className="w-full max-w-full overflow-hidden rounded-xl bg-black/20 border border-white/10">
+                    <img
+                      src={imageUrl}
+                      alt="Sten image"
+                      className="w-full h-auto max-h-96 object-contain"
+                      onError={(e) => {
+                        const target = e.target as HTMLImageElement;
+                        target.style.display = 'none';
+                      }}
+                    />
+                  </div>
+                </div>
+              ) : null;
+            })()}
 
             <div className="bg-[#0A0A0A] border border-[rgba(255,255,255,0.1)] rounded-xl p-6 mb-6">
               <pre className="text-white whitespace-pre-wrap break-words font-mono text-sm">

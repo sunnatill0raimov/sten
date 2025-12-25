@@ -6,7 +6,8 @@ const CreateSten: React.FC = () => {
 	const navigate = useNavigate()
 	const fileInputRef = useRef<HTMLInputElement>(null)
 	const documentInputRef = useRef<HTMLInputElement>(null)
-	const [logo, setLogo] = useState<string | null>(null)
+	const [logoFile, setLogoFile] = useState<File | null>(null)
+	const [logoPreview, setLogoPreview] = useState<string | null>(null)
 	const [documentFile, setDocumentFile] = useState<File | null>(null)
 	const [documentName, setDocumentName] = useState<string | null>(null)
 	const [stenTitle, setStenTitle] = useState('')
@@ -89,10 +90,8 @@ const CreateSten: React.FC = () => {
 			}
 
 			// Add logo if present
-			if (logo) {
-				// Convert data URL to blob and append
-				const logoBlob = await fetch(logo).then(r => r.blob())
-				formData.append('logo', logoBlob, 'logo.png')
+			if (logoFile) {
+				formData.append('logo', logoFile)
 			}
 
 							// Add attachment if present
@@ -123,14 +122,26 @@ const CreateSten: React.FC = () => {
 	const handleLogoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
 		const file = e.target.files?.[0]
 		if (file) {
+			// Validate file type
 			if (!file.type.match('image.*')) {
+				setError('Please select a valid image file (jpg, png, webp)')
 				return
 			}
-			const reader = new FileReader()
-			reader.onload = (event) => {
-				setLogo(event.target?.result as string)
+
+			// Validate file size (5MB limit)
+			const maxSize = 5 * 1024 * 1024 // 5MB
+			if (file.size > maxSize) {
+				setError('Image file size must be less than 5MB')
+				return
 			}
-			reader.readAsDataURL(file)
+
+			// Clear any previous errors
+			setError('')
+
+			// Store the file and create preview
+			setLogoFile(file)
+			const previewUrl = URL.createObjectURL(file)
+			setLogoPreview(previewUrl)
 		}
 	}
 
@@ -167,7 +178,11 @@ const CreateSten: React.FC = () => {
 
 	const removeLogo = (e: React.MouseEvent) => {
 		e.stopPropagation()
-		setLogo(null)
+		setLogoFile(null)
+		if (logoPreview) {
+			URL.revokeObjectURL(logoPreview)
+		}
+		setLogoPreview(null)
 		if (fileInputRef.current) {
 			fileInputRef.current.value = ''
 		}
@@ -210,7 +225,7 @@ const CreateSten: React.FC = () => {
 								type='file'
 								ref={fileInputRef}
 								onChange={handleLogoChange}
-								accept='image/png, image/jpeg, image/jpg, image/webp'
+								accept='image/*'
 								className='hidden'
 								disabled={isLoading}
 							/>
@@ -223,11 +238,11 @@ const CreateSten: React.FC = () => {
 								}}
 								title='Upload logo (optional)'
 							>
-								{logo ? (
+								{logoPreview ? (
 									<>
-										<img 
-											src={logo} 
-											alt='Logo preview' 
+										<img
+											src={logoPreview}
+											alt='Logo preview'
 											className='w-full h-full rounded-full object-cover'
 										/>
 										<button
@@ -264,7 +279,7 @@ const CreateSten: React.FC = () => {
 								)}
 							</div>
 							<span className='mt-2 text-xs text-white/50'>
-								{logo ? 'Tap to change logo' : ''}
+								{logoPreview ? 'Tap to change logo' : ''}
 							</span>
 						</label>
 					</div>

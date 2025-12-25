@@ -39,6 +39,13 @@ export interface CreateStenResponse {
 
 export interface StenContent {
 	content: string
+	logoUrl?: string | null
+	description?: string | null
+	prize?: string | null
+	charCount?: number
+	attachmentUrl?: string | null
+	attachmentName?: string | null
+	attachmentType?: string | null
 }
 
 export interface StenMetadata {

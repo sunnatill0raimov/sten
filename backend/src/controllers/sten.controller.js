@@ -443,6 +443,9 @@ export const viewSten = async (req, res) => {
 					description: sten.description || null,
 					prize: sten.prize || null,
 					charCount: sten.charCount || 0,
+					attachmentUrl: sten.attachmentUrl ? `${backendUrl}${sten.attachmentUrl}` : null,
+					attachmentName: sten.attachmentName || null,
+					attachmentType: sten.attachmentType || null,
 				})
 			} catch (decryptError) {
 				return res
@@ -462,6 +465,9 @@ export const viewSten = async (req, res) => {
 				description: sten.description || null,
 				prize: sten.prize || null,
 				charCount: sten.charCount || 0,
+				attachmentUrl: sten.attachmentUrl ? `${backendUrl}${sten.attachmentUrl}` : null,
+				attachmentName: sten.attachmentName || null,
+				attachmentType: sten.attachmentType || null,
 			})
 		}
 	} catch (error) {

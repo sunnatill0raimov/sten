@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { getStenMetadata, viewSten, unlockSten } from '../api/stenApi';
-import type { StenMetadata, StenContent } from '../api/stenApi';
+import type { StenMetadata } from '../api/stenApi';
 import { useCopyProtection } from '../hooks/useCopyProtection';
 
 type StenState = 
@@ -26,7 +26,7 @@ const ViewSten: React.FC = () => {
   const [stenState, setStenState] = useState<StenState>('loading');
   const [metadata, setMetadata] = useState<StenMetadata | null>(null);
   const [content, setContent] = useState<string>('');
-  const [_viewInfo, setViewInfo] = useState<StenContent | null>(null);
+  const [contentData, setContentData] = useState<any>(null); // Store full content data
   const [timeRemaining, setTimeRemaining] = useState<TimeRemaining>({
     days: 0,
     hours: 0,
@@ -146,7 +146,7 @@ const ViewSten: React.FC = () => {
     try {
       const result = await viewSten(id);
       setContent(result.content);
-      setViewInfo(result);
+      setContentData(result);
     } catch (err) {
       console.error('Failed to view STEN:', err);
     } finally {
@@ -160,11 +160,11 @@ const ViewSten: React.FC = () => {
 
     setIsUnlocking(true);
     setPasswordError('');
-    
+
     try {
       const result = await unlockSten(id, password);
       setContent(result.content);
-      setViewInfo(result);
+      setContentData(result);
       setPassword('');
     } catch (err: unknown) {
       console.error('Failed to unlock STEN:', err);
@@ -548,6 +548,31 @@ const ViewSten: React.FC = () => {
                         )}
                       </button>
                     </div>
+
+                    {/* Image display at top of content (attachment image takes priority) */}
+                    {(() => {
+                      // Priority: attachment image > logo
+                      const imageUrl = contentData?.attachmentUrl && contentData?.attachmentType?.startsWith('image/')
+                        ? contentData.attachmentUrl
+                        : metadata?.logoUrl;
+
+                      return imageUrl ? (
+                        <div className="mb-4">
+                          <div className="w-full max-w-full overflow-hidden rounded-xl bg-black/20 border border-white/10">
+                            <img
+                              src={imageUrl}
+                              alt="Sten image"
+                              className="w-full h-auto max-h-96 object-contain"
+                              onError={(e) => {
+                                const target = e.target as HTMLImageElement;
+                                target.style.display = 'none';
+                              }}
+                            />
+                          </div>
+                        </div>
+                      ) : null;
+                    })()}
+
                     <div className="bg-black/40 rounded-xl p-4 border border-white/5">
                       <pre className="text-white/90 whitespace-pre-wrap break-words font-mono text-sm leading-relaxed">
                         {content}

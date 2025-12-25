@@ -34,10 +34,25 @@ export const useCopyProtection = () => {
       }
     }
 
-    // Prevent drag selection
+    // Prevent drag selection and image dragging
     const handleDragStart = (e: DragEvent) => {
       const target = e.target as HTMLElement
       if (!target.closest('input, textarea, select, button')) {
+        e.preventDefault()
+        e.stopPropagation()
+      }
+    }
+
+    // Prevent image-specific actions
+    const handleImageContextMenu = (e: MouseEvent) => {
+      if ((e.target as HTMLElement).tagName === 'IMG') {
+        e.preventDefault()
+        e.stopPropagation()
+      }
+    }
+
+    const handleImageDragStart = (e: DragEvent) => {
+      if ((e.target as HTMLElement).tagName === 'IMG') {
         e.preventDefault()
         e.stopPropagation()
       }
@@ -71,16 +86,20 @@ export const useCopyProtection = () => {
 
     // Add event listeners
     container.addEventListener('contextmenu', handleContextMenu, true)
+    container.addEventListener('contextmenu', handleImageContextMenu, true)
     container.addEventListener('keydown', handleKeyDown, true)
     container.addEventListener('dragstart', handleDragStart, true)
+    container.addEventListener('dragstart', handleImageDragStart, true)
     container.addEventListener('touchstart', handleTouchStart, { passive: false })
     container.addEventListener('touchend', handleTouchEnd, true)
 
     // Cleanup function
     return () => {
       container.removeEventListener('contextmenu', handleContextMenu, true)
+      container.removeEventListener('contextmenu', handleImageContextMenu, true)
       container.removeEventListener('keydown', handleKeyDown, true)
       container.removeEventListener('dragstart', handleDragStart, true)
+      container.removeEventListener('dragstart', handleImageDragStart, true)
       container.removeEventListener('touchstart', handleTouchStart)
       container.removeEventListener('touchend', handleTouchEnd, true)
     }
